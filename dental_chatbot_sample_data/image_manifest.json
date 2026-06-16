@@ -1,0 +1,212 @@
+[
+  {
+    "image_reference": "cleansmile_soft_300.png",
+    "entity_type": "product",
+    "entity_name": "CleanSmile Soft 300 Manual Toothbrush",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm CleanSmile Soft 300 Manual Toothbrush, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "puredent_compact_soft.png",
+    "entity_type": "product",
+    "entity_name": "PureDent Compact Soft Brush",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm PureDent Compact Soft Brush, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "soniccare_lite_e1.png",
+    "entity_type": "product",
+    "entity_name": "SonicCare Lite E1 Electric Toothbrush",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm SonicCare Lite E1 Electric Toothbrush, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "oralwave_pro_s2.png",
+    "entity_type": "product",
+    "entity_name": "OralWave Pro S2 Electric Toothbrush",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm OralWave Pro S2 Electric Toothbrush, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "interclean_size_0.png",
+    "entity_type": "product",
+    "entity_name": "InterClean Size 0 Interdental Brush",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm InterClean Size 0 Interdental Brush, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "gapcare_angle_12.png",
+    "entity_type": "product",
+    "entity_name": "GapCare Angle Interdental Brush",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm GapCare Angle Interdental Brush, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "fluorident_fresh_mint.png",
+    "entity_type": "product",
+    "entity_name": "FluoriDent Fresh Mint Toothpaste",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm FluoriDent Fresh Mint Toothpaste, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "gentlewhite_daily.png",
+    "entity_type": "product",
+    "entity_name": "GentleWhite Daily Toothpaste",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm GentleWhite Daily Toothpaste, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "sensitivecare_mild.png",
+    "entity_type": "product",
+    "entity_name": "SensitiveCare Mild Toothpaste",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm SensitiveCare Mild Toothpaste, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "aquajet_mini.png",
+    "entity_type": "product",
+    "entity_name": "AquaJet Mini Water Flosser",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm AquaJet Mini Water Flosser, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "hydrosmile_home_h3.png",
+    "entity_type": "product",
+    "entity_name": "HydroSmile Home Water Flosser",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm HydroSmile Home Water Flosser, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "medirinse_alcohol_free.png",
+    "entity_type": "product",
+    "entity_name": "MediRinse Alcohol Free Mouthwash",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm MediRinse Alcohol Free Mouthwash, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "herbalfresh_green_tea.png",
+    "entity_type": "product",
+    "entity_name": "HerbalFresh Green Tea Mouthwash",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm HerbalFresh Green Tea Mouthwash, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "silkline_waxed_50m.png",
+    "entity_type": "product",
+    "entity_name": "SilkLine Waxed Dental Floss",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm SilkLine Waxed Dental Floss, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "easyfloss_picks_mint.png",
+    "entity_type": "product",
+    "entity_name": "EasyFloss Picks Mint",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm EasyFloss Picks Mint, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "freshtongue_copper_c1.png",
+    "entity_type": "product",
+    "entity_name": "FreshTongue Copper Cleaner",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm FreshTongue Copper Cleaner, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "brightsmile_strips_7_days.png",
+    "entity_type": "product",
+    "entity_name": "BrightSmile Whitening Strips 7 Days",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm BrightSmile Whitening Strips 7 Days, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "bracecare_wax_mint.png",
+    "entity_type": "product",
+    "entity_name": "BraceCare Orthodontic Wax",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm BraceCare Orthodontic Wax, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "orthoclean_travel_kit.png",
+    "entity_type": "product",
+    "entity_name": "OrthoClean Travel Kit",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm OrthoClean Travel Kit, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "sleepguard_soft_fit.png",
+    "entity_type": "product",
+    "entity_name": "SleepGuard Soft Night Guard",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 của sản phẩm SleepGuard Soft Night Guard, đặt trên nền trắng sạch, ánh sáng studio mềm, thể hiện rõ hình dáng sản phẩm, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "kham_tong_quat_tu_van.png",
+    "entity_type": "service",
+    "entity_name": "Khám tổng quát và tư vấn",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Khám tổng quát và tư vấn trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "cao_voi_danh_bong.png",
+    "entity_type": "service",
+    "entity_name": "Cạo vôi răng và đánh bóng",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Cạo vôi răng và đánh bóng trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "tram_rang_tham_my.png",
+    "entity_type": "service",
+    "entity_name": "Trám răng thẩm mỹ",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Trám răng thẩm mỹ trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "dieu_tri_tuy_rang_ham.png",
+    "entity_type": "service",
+    "entity_name": "Điều trị tủy răng hàm",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Điều trị tủy răng hàm trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "dieu_tri_viem_nuou.png",
+    "entity_type": "service",
+    "entity_name": "Điều trị viêm nướu",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Điều trị viêm nướu trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "nieng_rang_mac_cai_kim_loai.png",
+    "entity_type": "service",
+    "entity_name": "Niềng răng mắc cài kim loại",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Niềng răng mắc cài kim loại trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "nieng_rang_trong_suot.png",
+    "entity_type": "service",
+    "entity_name": "Niềng răng trong suốt",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Niềng răng trong suốt trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "implant_don_le.png",
+    "entity_type": "service",
+    "entity_name": "Cấy ghép Implant đơn lẻ",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Cấy ghép Implant đơn lẻ trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "nho_rang_khon.png",
+    "entity_type": "service",
+    "entity_name": "Nhổ răng khôn",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Nhổ răng khôn trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "tay_trang_rang_phong_kham.png",
+    "entity_type": "service",
+    "entity_name": "Tẩy trắng răng tại phòng khám",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Tẩy trắng răng tại phòng khám trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "mat_dan_su_veneer.png",
+    "entity_type": "service",
+    "entity_name": "Mặt dán sứ Veneer",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Mặt dán sứ Veneer trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "cham_soc_rang_tre_em.png",
+    "entity_type": "service",
+    "entity_name": "Chăm sóc răng trẻ em",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Chăm sóc răng trẻ em trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "tram_bit_ho_ranh_tre_em.png",
+    "entity_type": "service",
+    "entity_name": "Trám bít hố rãnh cho trẻ",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Trám bít hố rãnh cho trẻ trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "xu_ly_dau_rang_khan_cap.png",
+    "entity_type": "service",
+    "entity_name": "Xử lý đau răng khẩn cấp",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Xử lý đau răng khẩn cấp trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  },
+  {
+    "image_reference": "cap_cuu_chay_mau_sau_nho_rang.png",
+    "entity_type": "service",
+    "entity_name": "Cấp cứu chảy máu sau nhổ răng",
+    "image_prompt": "Ảnh thương mại chân thực tỷ lệ 1:1 minh họa dịch vụ Cấp cứu chảy máu sau nhổ răng trong phòng khám nha khoa sạch sẽ, không có cảnh máu hoặc thủ thuật gây khó chịu, không chữ, không logo, không watermark, không giá tiền."
+  }
+]

@@ -1,0 +1,1 @@
+"""Asset storage and resolution."""

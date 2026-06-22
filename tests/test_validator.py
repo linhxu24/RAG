@@ -38,6 +38,26 @@ def test_rejects_unsupported_price():
         ResponseValidator().validate(payload("Giá là 999.000đ"), context=context)
 
 
+def test_accepts_price_written_in_million_unit():
+    context = {
+        "items": [
+            {
+                "source_id": "service-1",
+                "text": "Dịch vụ tẩy trắng răng. Giá: 2500000",
+                "raw_json": {"price": 2500000},
+                "source": {},
+            }
+        ]
+    }
+
+    response = ResponseValidator().validate(
+        payload("Chi phí là 2,5 triệu."),
+        context=context,
+    )
+
+    assert response.intent == Intent.PRODUCT_DETAIL
+
+
 def test_rejects_invalid_json():
     with pytest.raises(ResponseValidationError, match="Invalid JSON"):
         ResponseValidator().validate("{not-json", context={"items": []})
@@ -74,3 +94,48 @@ def test_normalizes_model_asset_objects_to_context_asset_uuid():
     assert response.result.items[0].asset_ids == [
         "06f55b25-d810-4b6e-9be8-e2b04ab45d0e"
     ]
+
+
+def test_normalizes_item_references_from_name_to_context_source_id():
+    data = payload("Tẩy trắng răng mất khoảng 90 phút.")
+    data["intent"] = "SERVICE_DETAIL"
+    data["answer_type"] = "rag"
+    data["entities"] = [
+        {
+            "type": "service",
+            "name": "Tẩy trắng răng tại phòng khám",
+            "matched_id": "Tẩy trắng răng tại phòng khám",
+        }
+    ]
+    data["result"]["items"] = [
+        {
+            "type": "service",
+            "id": "Tẩy trắng răng tại phòng khám",
+            "name": "Tẩy trắng răng tại phòng khám",
+            "asset_ids": [],
+        }
+    ]
+    data["result"]["sources"] = [
+        {
+            "source_type": "service",
+            "source_id": "Tẩy trắng răng tại phòng khám",
+        }
+    ]
+    context = {
+        "items": [
+            {
+                "source_type": "service",
+                "source_id": "service-1",
+                "text": "Dịch vụ: Tẩy trắng răng tại phòng khám. Thời lượng: 90 phút",
+                "raw_json": {"name": "Tẩy trắng răng tại phòng khám"},
+                "source": {},
+                "canonical_key": "service:service-1",
+            }
+        ]
+    }
+
+    response = ResponseValidator().validate(data, context=context)
+
+    assert response.result.items[0].id == "service-1"
+    assert response.result.sources[0].source_id == "service-1"
+    assert response.entities[0].matched_id == "service-1"

@@ -61,7 +61,7 @@ export function UploadDocumentsPage() {
       title="Upload Documents"
       description="Upload tài liệu vào Docling ingestion pipeline và kiểm soát cách xử lý dữ liệu."
     >
-      <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(360px,0.7fr)] gap-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(360px,0.7fr)]">
         <div className="space-y-5">
           <div
             className={`panel flex min-h-[360px] flex-col items-center justify-center border-2 border-dashed p-10 text-center transition ${

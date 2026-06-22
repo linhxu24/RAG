@@ -34,7 +34,7 @@ class QueryRewriter:
         query: str,
         intent: Intent,
         settings: Settings,
-        ollama_client,
+        llm_client,
     ) -> RewriteResult:
         from app.retrieval.normalization import normalize_vietnamese
 
@@ -46,11 +46,13 @@ class QueryRewriter:
             f"this query. Do not invent numeric facts: {query}"
         )
         try:
-            response = await ollama_client.generate(
+            response = await llm_client.generate(
                 prompt=prompt,
-                model=settings.ollama_generation_model,
+                model=settings.llm_generation_model,
                 system="Return only the hypothetical retrieval passage.",
                 timeout_seconds=settings.hyde_timeout_seconds,
+                num_predict=min(256, settings.llm_generation_num_predict),
+                num_ctx=settings.llm_generation_num_ctx,
                 think=False,
             )
             rewritten = response.text.strip()

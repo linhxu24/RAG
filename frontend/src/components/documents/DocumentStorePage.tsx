@@ -63,43 +63,90 @@ export function DocumentStorePage() {
       key: "id",
       label: "doc_id",
       render: (row) => <span className="mono text-[10px]">{truncate(row.doc_id, 16)}</span>,
+      sortValue: (row) => row.doc_id,
+      searchValue: (row) => row.doc_id,
     },
     {
       key: "file",
       label: "file_name",
       render: (row) => <span className="font-semibold text-slate-800">{row.file_name}</span>,
+      sortValue: (row) => row.file_name,
+      searchValue: (row) => row.file_name,
     },
-    { key: "type", label: "type", render: (row) => row.file_type || "—" },
-    { key: "status", label: "status", render: (row) => <StatusBadge status={row.status} /> },
-    { key: "version", label: "version", render: (row) => row.version },
-    { key: "chunks", label: "chunks", render: (row) => row.chunks },
-    { key: "tables", label: "tables", render: (row) => row.tables },
-    { key: "assets", label: "assets", render: (row) => row.assets },
-    { key: "created", label: "created_at", render: (row) => formatDate(row.created_at) },
+    {
+      key: "type",
+      label: "type",
+      render: (row) => row.file_type || "—",
+      sortValue: (row) => row.file_type,
+      searchValue: (row) => row.file_type,
+    },
+    {
+      key: "status",
+      label: "status",
+      render: (row) => <StatusBadge status={row.status} />,
+      sortValue: (row) => row.status,
+      searchValue: (row) => row.status,
+    },
+    {
+      key: "version",
+      label: "version",
+      render: (row) => row.version,
+      sortValue: (row) => row.version,
+    },
+    {
+      key: "chunks",
+      label: "chunks",
+      render: (row) => row.chunks,
+      sortValue: (row) => row.chunks,
+    },
+    {
+      key: "tables",
+      label: "tables",
+      render: (row) => row.tables,
+      sortValue: (row) => row.tables,
+    },
+    {
+      key: "assets",
+      label: "assets",
+      render: (row) => row.assets,
+      sortValue: (row) => row.assets,
+    },
+    {
+      key: "created",
+      label: "created_at",
+      render: (row) => formatDate(row.created_at),
+      sortValue: (row) => row.created_at,
+      searchValue: (row) => formatDate(row.created_at),
+    },
     {
       key: "actions",
       label: "actions",
+      sortable: false,
       render: (row) => (
         <div className="flex items-center gap-1">
           <ActionIcon label="View" icon={Eye} onClick={() => setSelected(row.doc_id)} />
           <ActionIcon
             label="Activate"
             icon={CheckCircle2}
+            disabled={!["review_required", "approved", "parsed"].includes(String(row.status))}
             onClick={() => action.mutate({ type: "activate", id: row.doc_id })}
           />
           <ActionIcon
             label="Archive"
             icon={Archive}
+            disabled={!["active", "approved", "review_required"].includes(String(row.status))}
             onClick={() => action.mutate({ type: "archive", id: row.doc_id })}
           />
           <ActionIcon
             label="Re-ingest"
             icon={RotateCcw}
+            disabled={action.isPending}
             onClick={() => action.mutate({ type: "reingest", id: row.doc_id })}
           />
           <ActionIcon
             label="Delete permanently"
             icon={Trash2}
+            disabled={action.isPending}
             onClick={() => action.mutate({ type: "delete", id: row.doc_id })}
           />
         </div>
@@ -154,11 +201,12 @@ export function DocumentStorePage() {
           columns={columns}
           rowKey={(row) => row.doc_id}
           emptyTitle="Chưa có document"
+          defaultSort={{ key: "created", direction: "desc" }}
         />
       )}
       {selected && (
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/25 backdrop-blur-sm">
-          <div className="h-full w-[720px] overflow-y-auto border-l border-slate-200 bg-[#f7f9fc] shadow-2xl">
+          <div className="h-full w-full max-w-[720px] overflow-y-auto border-l border-slate-200 bg-[#f7f9fc] shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
               <div>
                 <div className="font-bold text-slate-900">Document detail</div>
@@ -191,15 +239,18 @@ function ActionIcon({
   label,
   icon: Icon,
   onClick,
+  disabled = false,
 }: {
   label: string;
   icon: typeof Eye;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       title={label}
-      className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+      disabled={disabled}
+      className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-35"
       onClick={onClick}
     >
       <Icon size={14} />

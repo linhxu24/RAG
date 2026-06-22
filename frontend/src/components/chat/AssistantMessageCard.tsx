@@ -1,6 +1,13 @@
-import { AlertTriangle, Bot, ThumbsDown, ThumbsUp } from "lucide-react";
+import { AlertTriangle, Bot } from "lucide-react";
 
 import type { ChatMessage } from "../../types";
+import {
+  formatBoolean,
+  formatCurrency,
+  formatDuration,
+  formatNumber,
+  formatUnknownValue,
+} from "../../utils/format";
 import { AssetGallery } from "./AssetGallery";
 import { SourceCards } from "./SourceCards";
 
@@ -49,35 +56,22 @@ export function AssistantMessageCard({ message }: { message: ChatMessage }) {
             trace_id: {response.trace_id}
           </div>
         )}
-        {!message.error && !error && (
-          <div className="mt-4 flex items-center gap-1 border-t border-slate-100 pt-3">
-            <button
-              aria-label="Helpful response"
-              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-emerald-600"
-            >
-              <ThumbsUp size={14} />
-            </button>
-            <button
-              aria-label="Unhelpful response"
-              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-rose-600"
-            >
-              <ThumbsDown size={14} />
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
 function ResultTable({ items }: { items: Array<Record<string, unknown>> }) {
-  const normalized = items.filter((item) => item.data && typeof item.data === "object");
+  const normalized = items.filter(
+    (item) => item.data && typeof item.data === "object" && !Array.isArray(item.data),
+  );
   if (!normalized.length) return null;
-  const columns = Array.from(
-    new Set(
-      normalized.flatMap((item) => Object.keys(item.data as Record<string, unknown>)),
-    ),
-  ).slice(0, 6);
+  const sourceTypes = new Set(normalized.map((item) => String(item.type || "unknown")));
+  const preferred = preferredColumns(sourceTypes);
+  const available = new Set(
+    normalized.flatMap((item) => Object.keys(item.data as Record<string, unknown>)),
+  );
+  const columns = preferred.filter((key) => available.has(key));
   if (!columns.length) return null;
   return (
     <div className="mt-4 overflow-auto rounded-xl border border-slate-200">
@@ -86,7 +80,7 @@ function ResultTable({ items }: { items: Array<Record<string, unknown>> }) {
           <tr>
             {columns.map((column) => (
               <th key={column} className="px-3 py-2 font-bold text-slate-500">
-                {column}
+                {columnLabel(column)}
               </th>
             ))}
           </tr>
@@ -95,8 +89,11 @@ function ResultTable({ items }: { items: Array<Record<string, unknown>> }) {
           {normalized.map((item, index) => (
             <tr key={String(item.id || index)} className="border-t border-slate-100">
               {columns.map((column) => (
-                <td key={column} className="max-w-48 truncate px-3 py-2">
-                  {String((item.data as Record<string, unknown>)[column] ?? "—")}
+                <td key={column} className="max-w-64 px-3 py-2 align-top">
+                  <ResultValue
+                    column={column}
+                    data={item.data as Record<string, unknown>}
+                  />
                 </td>
               ))}
             </tr>
@@ -105,4 +102,94 @@ function ResultTable({ items }: { items: Array<Record<string, unknown>> }) {
       </table>
     </div>
   );
+}
+
+function preferredColumns(sourceTypes: Set<string>): string[] {
+  if (sourceTypes.size === 1 && sourceTypes.has("product")) {
+    return ["name", "category", "brand", "model", "price", "quantity", "description"];
+  }
+  if (sourceTypes.size === 1 && sourceTypes.has("service")) {
+    return [
+      "name",
+      "source_category",
+      "duration_minutes",
+      "price",
+      "description",
+      "indications",
+    ];
+  }
+  if (sourceTypes.size === 1 && sourceTypes.has("faq")) {
+    return ["question", "answer", "category"];
+  }
+  if (sourceTypes.size === 1 && sourceTypes.has("clinic_info")) {
+    return ["key", "value"];
+  }
+  return ["name", "question", "category", "source_category", "price", "description", "value"];
+}
+
+function columnLabel(column: string): string {
+  const labels: Record<string, string> = {
+    name: "Tên",
+    question: "Câu hỏi",
+    answer: "Trả lời",
+    category: "Danh mục",
+    source_category: "Danh mục nguồn",
+    brand: "Thương hiệu",
+    model: "Mẫu",
+    price: "Giá",
+    quantity: "Số lượng",
+    duration_minutes: "Thời lượng",
+    description: "Mô tả",
+    indications: "Chỉ định",
+    key: "Thông tin",
+    value: "Giá trị",
+  };
+  return labels[column] || column.replaceAll("_", " ");
+}
+
+function ResultValue({
+  column,
+  data,
+}: {
+  column: string;
+  data: Record<string, unknown>;
+}) {
+  const value = data[column];
+  if (column === "price") {
+    return (
+      <span className="whitespace-nowrap font-semibold text-slate-800">
+        {formatCurrency(toNumber(value), String(data.currency || "VND"))}
+      </span>
+    );
+  }
+  if (column === "duration_minutes") {
+    return <span className="whitespace-nowrap">{formatDuration(toNumber(value))}</span>;
+  }
+  if (column === "quantity") {
+    const quantity = toNumber(value);
+    return quantity == null ? "—" : formatNumber(quantity);
+  }
+  if (typeof value === "boolean") return formatBoolean(value);
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    return (
+      <details>
+        <summary className="cursor-pointer font-semibold text-teal-700">Xem chi tiết</summary>
+        <pre className="mono mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-2 text-[10px] text-slate-200">
+          {JSON.stringify(value, null, 2)}
+        </pre>
+      </details>
+    );
+  }
+  const text = formatUnknownValue(value);
+  return (
+    <span className={column === "description" || column === "answer" ? "line-clamp-3" : ""} title={text}>
+      {text}
+    </span>
+  );
+}
+
+function toNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }

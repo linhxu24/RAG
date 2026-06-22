@@ -4,7 +4,9 @@ import { apiRequest } from "./client";
 export function sendChat(message: string, sessionId: string): Promise<ChatResponse> {
   return apiRequest<ChatResponse>("/chat", {
     method: "POST",
-    timeoutMs: 130_000,
+    // Local demo models may take several minutes. Let the request finish and
+    // rely on backend/model-provider timeouts instead.
+    timeoutMs: null,
     body: JSON.stringify({
       message,
       session_id: sessionId,

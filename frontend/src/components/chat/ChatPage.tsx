@@ -11,7 +11,21 @@ import { AssistantMessageCard } from "./AssistantMessageCard";
 import { ChatInput } from "./ChatInput";
 import { DebugPanel } from "./DebugPanel";
 
-const sessionId = crypto.randomUUID();
+const CHAT_SESSION_STORAGE_KEY = "simplydent.chat.session_id";
+
+function getOrCreateSessionId() {
+  try {
+    const existing = window.localStorage.getItem(CHAT_SESSION_STORAGE_KEY);
+    if (existing) return existing;
+    const created = crypto.randomUUID();
+    window.localStorage.setItem(CHAT_SESSION_STORAGE_KEY, created);
+    return created;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
+
+const sessionId = getOrCreateSessionId();
 
 export function ChatPage() {
   const [activeTab, setActiveTab] = useState<"chat" | "faq">("chat");
@@ -136,7 +150,7 @@ export function ChatPage() {
       {activeTab === "faq" ? (
         <FaqPanel />
       ) : (
-      <div className="grid h-[calc(100%-73px)] grid-cols-[minmax(0,1fr)_330px]">
+      <div className="grid h-[calc(100%-73px)] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_330px]">
         <section className="flex h-full min-h-0 min-w-0 flex-col bg-[#f7f9fc]">
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
             {!messages.length ? (
@@ -173,11 +187,13 @@ export function ChatPage() {
             onSend={() => void send()}
           />
         </section>
-        <DebugPanel
-          response={latest?.response || latestResponse}
-          trace={trace}
-          loading={mutation.isPending}
-        />
+        <div className="hidden min-h-0 xl:block">
+          <DebugPanel
+            response={latest?.response || latestResponse}
+            trace={trace}
+            loading={mutation.isPending}
+          />
+        </div>
       </div>
       )}
     </div>
@@ -187,17 +203,22 @@ export function ChatPage() {
 function FaqPanel() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
+  const categoryQuery = useQuery({
+    queryKey: ["public-faq-categories"],
+    queryFn: () => listPublicFaqs(),
+    staleTime: 5 * 60_000,
+  });
   const query = useQuery({
     queryKey: ["public-faqs", search, category],
     queryFn: () => listPublicFaqs(search, category),
   });
   const categories = Array.from(
     new Map(
-      (query.data?.items || [])
+      (categoryQuery.data?.items || [])
         .filter((item) => item.category_code)
         .map((item) => [item.category_code!, item.category || item.category_code!]),
     ),
-  );
+  ).sort((left, right) => String(left[1]).localeCompare(String(right[1]), "vi"));
   return (
     <div className="h-[calc(100%-73px)] overflow-y-auto bg-[#f7f9fc] px-6 py-6">
       <div className="mx-auto max-w-4xl">
@@ -211,7 +232,7 @@ function FaqPanel() {
               </p>
             </div>
           </div>
-          <div className="mt-5 grid grid-cols-[1fr_220px] gap-3">
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px]">
             <label className="control flex items-center gap-2 px-3">
               <Search size={16} className="text-slate-400" />
               <input
@@ -286,7 +307,7 @@ function Welcome({ onExample }: { onExample: (value: string) => void }) {
         Câu trả lời được grounded từ PostgreSQL, pgvector và tài liệu đã ingest.
         Debug panel sẽ hiển thị trace của từng request.
       </p>
-      <div className="mt-7 grid w-full grid-cols-3 gap-3">
+      <div className="mt-7 grid w-full grid-cols-1 gap-3 md:grid-cols-3">
         {examples.map((example) => (
           <button
             key={example}

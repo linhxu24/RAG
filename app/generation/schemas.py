@@ -42,6 +42,13 @@ class SafetyInfo(BaseModel):
     needs_human_support: bool = False
 
 
+class SynthesisOutput(BaseModel):
+    answer: str = Field(min_length=1)
+    used_source_ids: list[str] = Field(default_factory=list)
+    medical_disclaimer_required: bool = False
+    needs_human_support: bool = False
+
+
 class GeneratedResponse(BaseModel):
     intent: Intent
     confidence: float = Field(ge=0.0, le=1.0)
@@ -49,6 +56,7 @@ class GeneratedResponse(BaseModel):
     entities: list[EntityReference] = Field(default_factory=list)
     result: ResultBody
     safety: SafetyInfo = Field(default_factory=SafetyInfo)
+    degraded: bool = False
 
 
 class ChatRequest(BaseModel):
@@ -64,4 +72,5 @@ class ChatResponse(BaseModel):
     answer_type: str | None = None
     answer: ResultBody
     safety: SafetyInfo = Field(default_factory=SafetyInfo)
+    degraded: bool = False
     debug: dict[str, Any] = Field(default_factory=lambda: {"enabled": False})

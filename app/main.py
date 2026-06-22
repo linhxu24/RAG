@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -21,12 +22,14 @@ from app.config import get_settings
 from app.db.models import Asset
 from app.db.session import check_database, get_session_factory
 from app.observability.logging import configure_logging
+from app.orchestration.intent_registry import validate_intent_registry
 
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    validate_intent_registry()
     settings.ensure_directories()
     configure_logging(settings.debug)
     storage = AssetStorage(settings)
@@ -41,6 +44,8 @@ async def lifespan(_: FastAPI):
             chat_service.dense.embedder.validate_configuration(session)
     if settings.enable_reranker and settings.preload_reranker_on_startup:
         chat_service.reranker.warmup()
+    if settings.enable_gliner_ner and settings.preload_gliner_on_startup:
+        await asyncio.to_thread(chat_service.entity_span_extractor.warmup)
     yield
 
 

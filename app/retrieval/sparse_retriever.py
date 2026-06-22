@@ -2,7 +2,7 @@ from sqlalchemy import and_, func, literal, or_, select
 from sqlalchemy.orm import Session
 
 from app.constants import Intent
-from app.db.models import FAQ, Chunk, Product, Service, TableRow
+from app.db.models import FAQ, Chunk, Document, Product, Service, TableRow
 from app.retrieval.normalization import normalize_vietnamese, search_query_tokens
 from app.retrieval.types import RetrievalResult
 
@@ -39,14 +39,6 @@ class SparseRetriever:
             "simple",
             " | ".join(f"{token}:*" for token in tokens),
         )
-        if intent == Intent.FAQ:
-            return {
-                "faq": self._faqs(
-                    session,
-                    tsquery,
-                    normalized_query,
-                )
-            }
         result_sets = {
             "chunk": self._chunks(session, tsquery, normalized_query),
             "table_row": self._rows(
@@ -56,7 +48,7 @@ class SparseRetriever:
                 intent,
             ),
         }
-        if intent == Intent.UNKNOWN:
+        if intent in {Intent.FAQ, Intent.UNKNOWN}:
             result_sets["faq"] = self._faqs(
                 session,
                 tsquery,
@@ -73,7 +65,12 @@ class SparseRetriever:
         rank = func.ts_rank_cd(Chunk.content_tsv, tsquery)
         rows = session.execute(
             select(Chunk, rank.label("rank"))
-            .where(Chunk.status == "active", Chunk.content_tsv.op("@@")(tsquery))
+            .join(Document, Document.doc_id == Chunk.doc_id)
+            .where(
+                Chunk.status == "active",
+                Document.status == "active",
+                Chunk.content_tsv.op("@@")(tsquery),
+            )
             .order_by(rank.desc())
             .limit(self.top_k)
         ).all()
@@ -130,8 +127,10 @@ class SparseRetriever:
                     FAQ.source_row_id == TableRow.row_id,
                 ),
             )
+            .join(Document, Document.doc_id == TableRow.doc_id)
             .where(
                 TableRow.status == "active",
+                Document.status == "active",
                 TableRow.row_tsv.op("@@")(tsquery),
             )
             .order_by(rank.desc())
@@ -184,7 +183,12 @@ class SparseRetriever:
         rank = func.ts_rank_cd(FAQ.question_tsv, tsquery)
         rows = session.execute(
             select(FAQ, rank.label("rank"))
-            .where(FAQ.is_active.is_(True), FAQ.question_tsv.op("@@")(tsquery))
+            .outerjoin(Document, Document.doc_id == FAQ.source_doc_id)
+            .where(
+                FAQ.is_active.is_(True),
+                or_(FAQ.source_doc_id.is_(None), Document.status == "active"),
+                FAQ.question_tsv.op("@@")(tsquery),
+            )
             .order_by(rank.desc())
             .limit(self.top_k)
         ).all()
@@ -213,8 +217,10 @@ class SparseRetriever:
         score = func.similarity(normalized_text, literal(normalized_query))
         rows = session.execute(
             select(Chunk, score.label("score"))
+            .join(Document, Document.doc_id == Chunk.doc_id)
             .where(
                 Chunk.status == "active",
+                Document.status == "active",
                 score >= self.trigram_threshold,
             )
             .order_by(score.desc())
@@ -272,8 +278,10 @@ class SparseRetriever:
                     FAQ.source_row_id == TableRow.row_id,
                 ),
             )
+            .join(Document, Document.doc_id == TableRow.doc_id)
             .where(
                 TableRow.status == "active",
+                Document.status == "active",
                 score >= self.trigram_threshold,
             )
             .order_by(score.desc())
@@ -321,8 +329,10 @@ class SparseRetriever:
         score = func.similarity(normalized_text, literal(normalized_query))
         rows = session.execute(
             select(FAQ, score.label("score"))
+            .outerjoin(Document, Document.doc_id == FAQ.source_doc_id)
             .where(
                 FAQ.is_active.is_(True),
+                or_(FAQ.source_doc_id.is_(None), Document.status == "active"),
                 score >= self.trigram_threshold,
             )
             .order_by(score.desc())

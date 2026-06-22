@@ -25,6 +25,20 @@ class Settings(BaseSettings):
     router_failure_threshold: int = 2
     router_circuit_breaker_seconds: int = 60
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    enable_multi_task_planner: bool = True
+    enable_plan_review: bool = True
+    enable_evidence_synthesis: bool = True
+    enable_gliner_ner: bool = True
+    gliner_model: str = "urchade/gliner_multi-v2.1"
+    gliner_threshold: float = 0.4
+    gliner_device: str = "cpu"
+    preload_gliner_on_startup: bool = True
+    enable_context_binder: bool = True
+    context_binder_strict_follow_up: bool = True
+    context_binder_trace_decisions: bool = True
+    max_sub_queries: int = 3
+    max_evidence_items: int = 12
+    conversation_history_turns: int = 8
 
     database_url: str | None = None
     postgres_host: str = "localhost"
@@ -40,16 +54,35 @@ class Settings(BaseSettings):
     strict_embedding: bool = True
     allow_embedding_fallback: bool = False
 
+    llm_provider: str = "ollama"
+
     ollama_base_url: str = "http://localhost:11434"
     ollama_generation_model: str = Field(
-        default="qwen2.5:7b-instruct",
+        default="qwen2.5:14b-instruct-q4_K_M",
         validation_alias=AliasChoices("OLLAMA_GENERATION_MODEL", "OLLAMA_LLM_MODEL"),
     )
-    ollama_router_model: str = "qwen2.5:3b-instruct"
+    ollama_router_model: str = "qwen2.5:7b-instruct"
     ollama_vision_model: str = "llava:latest"
     ollama_timeout_seconds: int = 120
+    ollama_router_timeout_seconds: int = 0
+    ollama_generation_timeout_seconds: int = 0
     ollama_keep_alive: str = "30m"
-    ollama_num_predict: int = 768
+    ollama_num_predict: int = 2048
+    ollama_router_num_predict: int = 512
+    ollama_generation_num_predict: int = 2048
+    ollama_router_num_ctx: int = 8_192
+    ollama_generation_num_ctx: int = 16_384
+
+    openai_api_key: str | None = None
+    openai_base_url: str = "https://api.openai.com/v1"
+    openai_router_model: str = "gpt-4.1-nano"
+    openai_generation_model: str = "gpt-4.1"
+    openai_timeout_seconds: int = 0
+    openai_router_timeout_seconds: int = 0
+    openai_generation_timeout_seconds: int = 0
+    openai_max_tokens: int = 2048
+    openai_router_max_tokens: int = 512
+    openai_generation_max_tokens: int = 2048
 
     dense_top_k: int = 20
     dense_min_score: float = 0.25
@@ -112,6 +145,54 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def llm_router_model(self) -> str:
+        if self.llm_provider.lower().strip() == "openai":
+            return self.openai_router_model
+        return self.ollama_router_model
+
+    @property
+    def llm_generation_model(self) -> str:
+        if self.llm_provider.lower().strip() == "openai":
+            return self.openai_generation_model
+        return self.ollama_generation_model
+
+    @property
+    def llm_router_timeout_seconds(self) -> int:
+        if self.llm_provider.lower().strip() == "openai":
+            return self.openai_router_timeout_seconds
+        return self.ollama_router_timeout_seconds
+
+    @property
+    def llm_generation_timeout_seconds(self) -> int:
+        if self.llm_provider.lower().strip() == "openai":
+            return self.openai_generation_timeout_seconds
+        return self.ollama_generation_timeout_seconds
+
+    @property
+    def llm_router_num_predict(self) -> int:
+        if self.llm_provider.lower().strip() == "openai":
+            return self.openai_router_max_tokens
+        return self.ollama_router_num_predict
+
+    @property
+    def llm_generation_num_predict(self) -> int:
+        if self.llm_provider.lower().strip() == "openai":
+            return self.openai_generation_max_tokens
+        return self.ollama_generation_num_predict
+
+    @property
+    def llm_router_num_ctx(self) -> int | None:
+        if self.llm_provider.lower().strip() == "openai":
+            return None
+        return self.ollama_router_num_ctx
+
+    @property
+    def llm_generation_num_ctx(self) -> int | None:
+        if self.llm_provider.lower().strip() == "openai":
+            return None
+        return self.ollama_generation_num_ctx
 
 
 @lru_cache

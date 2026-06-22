@@ -333,6 +333,24 @@ class Service(Base):
     metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB, default=dict)
 
 
+class ServiceAlias(Base):
+    __tablename__ = "service_aliases"
+    __table_args__ = (
+        UniqueConstraint(
+            "service_id",
+            "normalized_alias",
+            name="uq_service_alias_service_normalized",
+        ),
+    )
+
+    alias_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    service_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("services.service_id", ondelete="CASCADE"), index=True
+    )
+    alias: Mapped[str] = mapped_column(Text, nullable=False)
+    normalized_alias: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
+
 class ClinicInfo(Base):
     __tablename__ = "clinic_info"
 
@@ -462,6 +480,52 @@ class RagTraceStep(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     trace: Mapped[RagTrace] = relationship(back_populates="steps")
+
+
+class ConversationSession(Base):
+    __tablename__ = "conversation_sessions"
+
+    session_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB, default=dict)
+
+
+class ConversationTurn(Base):
+    __tablename__ = "conversation_turns"
+
+    turn_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    session_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("conversation_sessions.session_id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    detected_intents: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    entities: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    resolved_ids: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    trace_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("rag_traces.trace_id", ondelete="SET NULL"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ConversationSummary(Base):
+    __tablename__ = "conversation_summaries"
+
+    summary_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    session_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("conversation_sessions.session_id", ondelete="CASCADE"), index=True
+    )
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    last_turn_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("conversation_turns.turn_id", ondelete="SET NULL")
+    )
+    metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class EvaluationDataset(Base):

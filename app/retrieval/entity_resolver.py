@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.constants import Intent
-from app.db.models import Product, ProductAlias, Service
+from app.db.models import Product, ProductAlias, Service, ServiceAlias
 from app.retrieval.normalization import normalize_vietnamese, query_tokens
 
 
@@ -201,46 +201,59 @@ class DatabaseEntityResolver:
                     ),
                 )
             )
-        if entity_type == "product":
-            alias_name = func.lower(
-                func.simplydent_unaccent(ProductAlias.alias)
-            )
-            alias_contained = func.strpos(query_value, alias_name) > 0
-            alias_score = func.greatest(
-                func.similarity(alias_name, query_value),
-                func.word_similarity(alias_name, query_value),
-                func.word_similarity(query_value, alias_name),
-            )
-            alias_rows = session.execute(
-                select(
-                    Product.product_id,
-                    Product.name,
-                    alias_score.label("score"),
-                    alias_contained.label("contained"),
-                )
-                .join(ProductAlias, ProductAlias.product_id == Product.product_id)
-                .where(
-                    Product.status == "active",
-                    or_(
-                        alias_contained,
-                        alias_score >= self.settings.entity_match_threshold,
-                    ),
-                )
-                .order_by(alias_contained.desc(), alias_score.desc())
-                .limit(5)
-            ).all()
-            candidates.extend(
-                EntityCandidate(
-                    entity_type="product",
-                    entity_id=str(entity_id),
-                    name=str(name),
-                    score=1.0 if is_contained else float(score),
-                    match_type="alias",
-                )
-                for entity_id, name, score, is_contained in alias_rows
-            )
-            candidates.sort(key=lambda item: item.score, reverse=True)
+        candidates.extend(self._alias_candidates(session, query_value, entity_type))
+        candidates.sort(key=lambda item: item.score, reverse=True)
         return candidates
+
+    def _alias_candidates(
+        self,
+        session: Session,
+        query_value,
+        entity_type: str,
+    ) -> list[EntityCandidate]:
+        model = Product if entity_type == "product" else Service
+        alias_model = ProductAlias if entity_type == "product" else ServiceAlias
+        id_column = Product.product_id if entity_type == "product" else Service.service_id
+        fk_column = (
+            ProductAlias.product_id
+            if entity_type == "product"
+            else ServiceAlias.service_id
+        )
+        alias_name = func.lower(func.simplydent_unaccent(alias_model.alias))
+        alias_contained = func.strpos(query_value, alias_name) > 0
+        alias_score = func.greatest(
+            func.similarity(alias_name, query_value),
+            func.word_similarity(alias_name, query_value),
+            func.word_similarity(query_value, alias_name),
+        )
+        rows = session.execute(
+            select(
+                id_column,
+                model.name,
+                alias_score.label("score"),
+                alias_contained.label("contained"),
+            )
+            .join(alias_model, fk_column == id_column)
+            .where(
+                model.status == "active",
+                or_(
+                    alias_contained,
+                    alias_score >= self.settings.entity_match_threshold,
+                ),
+            )
+            .order_by(alias_contained.desc(), alias_score.desc())
+            .limit(5)
+        ).all()
+        return [
+            EntityCandidate(
+                entity_type=entity_type,
+                entity_id=str(entity_id),
+                name=str(name),
+                score=1.0 if is_contained else float(score),
+                match_type="alias",
+            )
+            for entity_id, name, score, is_contained in rows
+        ]
 
     @staticmethod
     def _segments(query: str) -> list[str]:

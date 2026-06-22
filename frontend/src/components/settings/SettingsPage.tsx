@@ -14,7 +14,7 @@ export function SettingsPage() {
       title="Settings"
       description="Frontend environment và backend RAG configuration. Backend settings hiện read-only."
     >
-      <div className="mb-5 grid grid-cols-2 gap-5">
+      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <EnvironmentCard
           title="API Base URL"
           value={API_BASE_URL}
@@ -38,7 +38,7 @@ export function SettingsPage() {
             </div>
             <StatusBadge status={query.data.read_only ? "read only" : "editable"} />
           </div>
-          <div className="grid grid-cols-2 gap-x-8 px-5 py-2">
+          <div className="grid grid-cols-1 gap-x-8 px-5 py-2 lg:grid-cols-2">
             {Object.entries(query.data)
               .filter(([key]) => key !== "read_only")
               .map(([key, value]) => (

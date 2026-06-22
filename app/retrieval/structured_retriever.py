@@ -2,16 +2,22 @@ from decimal import Decimal
 from typing import Any
 
 from rapidfuzz import fuzz
-from sqlalchemy import asc, desc, select
+from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.config import Settings
 from app.constants import Intent
-from app.db.models import FAQ, Asset, ClinicInfo, FAQAlias, Product, Service
+from app.db.models import FAQ, Asset, ClinicInfo, Document, FAQAlias, Product, Service
 from app.retrieval.normalization import (
     normalize_vietnamese,
     search_query_tokens,
 )
-from app.retrieval.structured_query import ProductQuerySpec, parse_product_query
+from app.retrieval.structured_query import (
+    ProductQuerySpec,
+    ServiceQuerySpec,
+    parse_product_query,
+    parse_service_query,
+)
 from app.retrieval.types import RetrievalResult
 
 
@@ -22,18 +28,30 @@ def serialize_value(value: Any) -> Any:
 
 
 class StructuredRetriever:
+    def __init__(self, settings: Settings | None = None):
+        self.match_threshold = (
+            settings.entity_match_threshold if settings else 0.72
+        )
+        self.ambiguity_margin = (
+            settings.entity_ambiguity_margin if settings else 0.05
+        )
+
     def active_names(self, session: Session) -> tuple[list[str], list[str]]:
         products = list(
             session.scalars(
                 select(Product.name)
+                .join(Document, Document.doc_id == Product.source_doc_id)
                 .where(Product.status == "active")
+                .where(Document.status == "active")
                 .distinct()
             ).all()
         )
         services = list(
             session.scalars(
                 select(Service.name)
+                .join(Document, Document.doc_id == Service.source_doc_id)
                 .where(Service.status == "active")
+                .where(Document.status == "active")
                 .distinct()
             ).all()
         )
@@ -55,8 +73,12 @@ class StructuredRetriever:
                 for item in self.list_products(session, specification)
             ]
         if intent == Intent.SERVICE_LIST:
+            specification = parse_service_query(session, query)
+            if specification.needs_clarification:
+                return []
             return [
-                self._service_result(session, item, 1.0) for item in self.list_services(session)
+                self._service_result(session, item, 1.0)
+                for item in self.list_services(session, specification)
             ]
         if intent == Intent.PRODUCT_DETAIL:
             product = self.get_product(session, entities[0] if entities else query)
@@ -84,7 +106,11 @@ class StructuredRetriever:
         specification: ProductQuerySpec | None = None,
     ) -> list[Product]:
         specification = specification or ProductQuerySpec()
-        statement = select(Product).where(Product.status == "active")
+        statement = (
+            select(Product)
+            .join(Document, Document.doc_id == Product.source_doc_id)
+            .where(Product.status == "active", Document.status == "active")
+        )
         if specification.category_codes:
             statement = statement.where(
                 Product.category_code.in_(specification.category_codes)
@@ -93,10 +119,34 @@ class StructuredRetriever:
             statement = statement.where(
                 Product.product_id.in_(specification.product_ids)
             )
+        if specification.brand_terms:
+            statement = statement.where(
+                self._product_terms_clause(
+                    specification.brand_terms,
+                    Product.brand,
+                    Product.name,
+                    Product.model,
+                )
+            )
+        if specification.feature_terms:
+            statement = statement.where(
+                self._product_terms_clause(
+                    specification.feature_terms,
+                    Product.name,
+                    Product.category,
+                    Product.brand,
+                    Product.model,
+                    Product.description,
+                )
+            )
         if specification.price_min is not None:
             statement = statement.where(Product.price >= specification.price_min)
         if specification.price_max is not None:
             statement = statement.where(Product.price <= specification.price_max)
+        if specification.quantity_min is not None:
+            statement = statement.where(Product.quantity >= specification.quantity_min)
+        if specification.quantity_max is not None:
+            statement = statement.where(Product.quantity <= specification.quantity_max)
         sort_columns = {
             "price": Product.price,
             "quantity": Product.quantity,
@@ -112,12 +162,91 @@ class StructuredRetriever:
             ).all()
         )
 
-    def list_services(self, session: Session) -> list[Service]:
-        return list(
+    def list_services(
+        self,
+        session: Session,
+        specification: ServiceQuerySpec | None = None,
+    ) -> list[Service]:
+        specification = specification or ServiceQuerySpec()
+        services = list(
             session.scalars(
-                select(Service).where(Service.status == "active").order_by(Service.name)
+                select(Service)
+                .join(Document, Document.doc_id == Service.source_doc_id)
+                .where(Service.status == "active", Document.status == "active")
             ).all()
         )
+        if specification.category_codes:
+            services = [
+                service
+                for service in services
+                if self._service_matches_category(service, specification)
+            ]
+        if specification.service_ids:
+            service_ids = set(specification.service_ids)
+            services = [
+                service
+                for service in services
+                if str(service.service_id) in service_ids
+            ]
+        if specification.price_min is not None:
+            services = [
+                service
+                for service in services
+                if service.price is not None and service.price >= specification.price_min
+            ]
+        if specification.price_max is not None:
+            services = [
+                service
+                for service in services
+                if service.price is not None and service.price <= specification.price_max
+            ]
+        if specification.feature_terms:
+            services = [
+                service
+                for service in services
+                if self._service_matches_terms(service, specification.feature_terms)
+            ]
+        if specification.symptom_terms:
+            services = [
+                service
+                for service in services
+                if self._service_matches_terms(service, specification.symptom_terms)
+            ]
+        if specification.duration_min is not None:
+            services = [
+                service
+                for service in services
+                if service.duration_minutes is not None
+                and service.duration_minutes >= specification.duration_min
+            ]
+        if specification.duration_max is not None:
+            services = [
+                service
+                for service in services
+                if service.duration_minutes is not None
+                and service.duration_minutes <= specification.duration_max
+            ]
+        reverse = specification.sort_direction == "desc"
+        with_sort_value = [
+            service
+            for service in services
+            if self._service_sort_value(service, specification.sort_by) is not None
+        ]
+        without_sort_value = [
+            service
+            for service in services
+            if self._service_sort_value(service, specification.sort_by) is None
+        ]
+        with_sort_value.sort(
+            key=lambda service: (
+                self._service_sort_value(service, specification.sort_by),
+                service.name,
+            ),
+            reverse=reverse,
+        )
+        without_sort_value.sort(key=lambda service: service.name)
+        services = with_sort_value + without_sort_value
+        return services[: specification.limit]
 
     def get_product(self, session: Session, name_or_query: str) -> tuple[Product, float] | None:
         products = self.list_products(session)
@@ -128,7 +257,16 @@ class StructuredRetriever:
         return self._best_match(services, name_or_query)
 
     def get_faq(self, session: Session, query: str) -> tuple[FAQ, float] | None:
-        faqs = list(session.scalars(select(FAQ).where(FAQ.is_active.is_(True))).all())
+        faqs = list(
+            session.scalars(
+                select(FAQ)
+                .outerjoin(Document, Document.doc_id == FAQ.source_doc_id)
+                .where(
+                    FAQ.is_active.is_(True),
+                    or_(FAQ.source_doc_id.is_(None), Document.status == "active"),
+                )
+            ).all()
+        )
         if not faqs:
             return None
         aliases = session.scalars(select(FAQAlias)).all()
@@ -162,7 +300,16 @@ class StructuredRetriever:
     def clinic_info(self, session: Session, query: str) -> list[RetrievalResult]:
         records = list(
             session.scalars(
-                select(ClinicInfo).where(ClinicInfo.status == "active").order_by(ClinicInfo.key)
+                select(ClinicInfo)
+                .outerjoin(Document, Document.doc_id == ClinicInfo.source_doc_id)
+                .where(
+                    ClinicInfo.status == "active",
+                    or_(
+                        ClinicInfo.source_doc_id.is_(None),
+                        Document.status == "active",
+                    ),
+                )
+                .order_by(ClinicInfo.key)
             ).all()
         )
         relevant = [
@@ -196,8 +343,7 @@ class StructuredRetriever:
             return ("giờ làm", "mở cửa")
         return (normalized,)
 
-    @staticmethod
-    def _best_match(records: list[Any], query: str) -> tuple[Any, float] | None:
+    def _best_match(self, records: list[Any], query: str) -> tuple[Any, float] | None:
         if not records:
             return None
         normalized = normalize_vietnamese(query)
@@ -211,24 +357,85 @@ class StructuredRetriever:
         contained = [
             record
             for record in records
-            if normalize_vietnamese(record.name) in normalized
+            if (
+                normalize_vietnamese(record.name) in normalized
+                or normalized in normalize_vietnamese(record.name)
+            )
         ]
         if contained:
-            return max(contained, key=lambda item: len(item.name)), 0.96
+            return min(
+                contained,
+                key=lambda item: abs(len(normalize_vietnamese(item.name)) - len(normalized)),
+            ), 0.96
+
+        query_tokens = self._entity_tokens(query)
         scored = [
             (
                 record,
-                fuzz.WRatio(normalized, normalize_vietnamese(record.name)) / 100.0,
+                self._entity_match_score(
+                    normalized,
+                    query_tokens,
+                    normalize_vietnamese(record.name),
+                    self._entity_tokens(record.name),
+                ),
             )
             for record in records
         ]
         scored.sort(key=lambda item: item[1], reverse=True)
         best = scored[0]
-        if best[1] < 0.72:
+        if best[1] < self.match_threshold:
             return None
-        if len(scored) > 1 and best[1] - scored[1][1] < 0.08:
+        if len(scored) > 1 and best[1] - scored[1][1] < self.ambiguity_margin:
             return None
         return best
+
+    @staticmethod
+    def _entity_tokens(value: str) -> set[str]:
+        stopwords = {
+            "toi",
+            "muon",
+            "hoi",
+            "ve",
+            "cho",
+            "xem",
+            "dich",
+            "vu",
+            "san",
+            "pham",
+            "gia",
+            "chi",
+            "phi",
+            "bao",
+            "nhieu",
+            "co",
+            "khong",
+            "mat",
+            "lau",
+            "thoi",
+            "gian",
+            "la",
+            "cua",
+        }
+        return {
+            token
+            for token in search_query_tokens(value)
+            if token not in stopwords and len(token) > 1
+        }
+
+    @staticmethod
+    def _entity_match_score(
+        normalized_query: str,
+        query_tokens: set[str],
+        normalized_name: str,
+        name_tokens: set[str],
+    ) -> float:
+        fuzzy_score = fuzz.WRatio(normalized_query, normalized_name) / 100.0
+        overlap = query_tokens & name_tokens
+        query_coverage = len(overlap) / max(1, len(query_tokens))
+        name_coverage = len(overlap) / max(1, len(name_tokens))
+        if len(query_tokens) >= 2 and query_coverage == 1.0:
+            return min(0.98, 0.94 + 0.04 * name_coverage)
+        return 0.55 * fuzzy_score + 0.30 * query_coverage + 0.15 * name_coverage
 
     def _product_result(self, session: Session, product: Product, score: float) -> RetrievalResult:
         asset_token = self._asset_token(session, product.asset_id)
@@ -273,9 +480,10 @@ class StructuredRetriever:
 
     def _service_result(self, session: Session, service: Service, score: float) -> RetrievalResult:
         asset_token = self._asset_token(session, service.asset_id)
+        category = service.source_category or service.category_code
         fields = [
             f"Dịch vụ: {service.name}",
-            f"Danh mục: {service.category_code}" if service.category_code else None,
+            f"Danh mục: {category}" if category else None,
             f"Mô tả: {service.description}" if service.description else None,
             f"Thời lượng: {service.duration_minutes} phút"
             if service.duration_minutes is not None
@@ -311,6 +519,70 @@ class StructuredRetriever:
             },
             canonical_key=f"service:{service.service_id}",
         )
+
+    @staticmethod
+    def _service_matches_category(
+        service: Service,
+        specification: ServiceQuerySpec,
+    ) -> bool:
+        if service.category_code in specification.category_codes:
+            return True
+        haystack = normalize_vietnamese(
+            " ".join(
+                value
+                for value in (
+                    service.source_category,
+                    service.category_code,
+                    service.name,
+                )
+                if value
+            )
+        )
+        return any(term and term in haystack for term in specification.category_terms)
+
+    @staticmethod
+    def _service_matches_terms(service: Service, terms: tuple[str, ...]) -> bool:
+        haystack = normalize_vietnamese(
+            " ".join(
+                value
+                for value in (
+                    service.name,
+                    service.source_category,
+                    service.category_code,
+                    service.description,
+                    " ".join(service.symptoms or []),
+                    " ".join(service.indications or []),
+                    " ".join(service.contraindications or []),
+                )
+                if value
+            )
+        )
+        return any(normalize_vietnamese(term) in haystack for term in terms if term)
+
+    @staticmethod
+    def _product_terms_clause(terms: tuple[str, ...], *columns):
+        clauses = []
+        normalized_terms = [
+            normalize_vietnamese(term)
+            for term in terms
+            if str(term or "").strip()
+        ]
+        for term in normalized_terms:
+            for column in columns:
+                clauses.append(
+                    func.lower(func.simplydent_unaccent(column)).contains(term)
+                )
+        return or_(*clauses) if clauses else True
+
+    @staticmethod
+    def _service_sort_value(service: Service, sort_by: str):
+        if sort_by == "price":
+            return service.price
+        if sort_by == "duration":
+            return service.duration_minutes
+        if sort_by == "category":
+            return service.source_category or service.category_code
+        return service.name
 
     @staticmethod
     def _faq_result(faq: FAQ, score: float) -> RetrievalResult:

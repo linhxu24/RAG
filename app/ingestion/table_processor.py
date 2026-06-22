@@ -16,6 +16,7 @@ from app.db.models import (
     Product,
     ProductAlias,
     Service,
+    ServiceAlias,
     TableRow,
 )
 from app.ingestion.business_dedup import business_key
@@ -171,7 +172,10 @@ class TableProcessor:
             self._add_product_aliases(session, product, canonical.get("aliases"))
             return "product"
         if entity_type == "service" and entity_name:
-            session.add(self._service(session, table_row, canonical, status))
+            service = self._service(session, table_row, canonical, status)
+            session.add(service)
+            session.flush()
+            self._add_service_aliases(session, service, canonical.get("aliases"))
             return "service"
         if entity_type == "faq" and canonical.get("question") and canonical.get("answer"):
             category = resolve_category(session, "faq", canonical.get("category"))
@@ -313,6 +317,22 @@ class TableProcessor:
             session.add(
                 ProductAlias(
                     product_id=product.product_id,
+                    alias=alias,
+                    normalized_alias=normalize_label(alias),
+                )
+            )
+
+    @classmethod
+    def _add_service_aliases(
+        cls,
+        session: Session,
+        service: Service,
+        value: Any,
+    ) -> None:
+        for alias in cls._split_values(value) or []:
+            session.add(
+                ServiceAlias(
+                    service_id=service.service_id,
                     alias=alias,
                     normalized_alias=normalize_label(alias),
                 )

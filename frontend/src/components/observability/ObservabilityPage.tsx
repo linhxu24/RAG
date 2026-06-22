@@ -33,14 +33,17 @@ export function ObservabilityPage() {
   const metrics = useQuery({
     queryKey: ["observability-metrics"],
     queryFn: getObservabilityMetrics,
+    refetchInterval: 30_000,
   });
   const errors = useQuery({
     queryKey: ["observability-errors"],
     queryFn: getRecentErrors,
+    refetchInterval: 30_000,
   });
   const diagnostics = useQuery({
     queryKey: ["observability-diagnostics"],
     queryFn: getObservabilityDiagnostics,
+    refetchInterval: 30_000,
   });
   const data = metrics.data || {};
   return (
@@ -54,7 +57,7 @@ export function ObservabilityPage() {
       ) : health.isError ? (
         <ErrorState error={health.error} onRetry={() => void health.refetch()} />
       ) : (
-        <div className="grid grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
           <HealthCard
             label="PostgreSQL"
             status={health.data?.postgresql?.status}
@@ -94,7 +97,7 @@ export function ObservabilityPage() {
         </div>
       )}
       <h2 className="mb-3 mt-6 text-sm font-bold text-slate-800">Request metrics today</h2>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <MetricCard label="Total requests" value={data.total_requests ?? "—"} icon={Activity} />
         <MetricCard label="Success rate" value={formatPercent(data.success_rate)} icon={Gauge} />
         <MetricCard
@@ -117,6 +120,18 @@ export function ObservabilityPage() {
           value={formatPercent(data.fallback_rate)}
           icon={Activity}
           accent="violet"
+        />
+        <MetricCard
+          label="No-result rate"
+          value={formatPercent(data.no_result_rate)}
+          icon={AlertTriangle}
+          accent="rose"
+        />
+        <MetricCard
+          label="Clarification rate"
+          value={formatPercent(data.clarification_rate)}
+          icon={Activity}
+          accent="amber"
         />
       </div>
       <h2 className="mb-3 mt-6 text-sm font-bold text-slate-800">Diagnostic alerts</h2>
@@ -143,6 +158,8 @@ export function ObservabilityPage() {
       <h2 className="mb-3 mt-6 text-sm font-bold text-slate-800">Recent errors</h2>
       {errors.isError ? (
         <ErrorState error={errors.error} />
+      ) : errors.isLoading ? (
+        <LoadingState />
       ) : (
         <ErrorsTable rows={errors.data?.items || []} />
       )}
@@ -179,18 +196,40 @@ function HealthCard({
 
 function ErrorsTable({ rows }: { rows: RecentError[] }) {
   const columns: Column<RecentError>[] = [
-    { key: "time", label: "time", render: (row) => formatDate(row.time) },
+    {
+      key: "time",
+      label: "time",
+      render: (row) => formatDate(row.time),
+      sortValue: (row) => row.time,
+      searchValue: (row) => formatDate(row.time),
+    },
     {
       key: "trace",
       label: "trace_id",
       render: (row) => <span className="mono text-[10px]">{truncate(row.trace_id, 18)}</span>,
+      sortValue: (row) => row.trace_id,
+      searchValue: (row) => row.trace_id,
     },
-    { key: "step", label: "step", render: (row) => row.step },
-    { key: "type", label: "error_type", render: (row) => row.error_type },
+    {
+      key: "step",
+      label: "step",
+      render: (row) => row.step,
+      sortValue: (row) => row.step,
+      searchValue: (row) => row.step,
+    },
+    {
+      key: "type",
+      label: "error_type",
+      render: (row) => row.error_type,
+      sortValue: (row) => row.error_type,
+      searchValue: (row) => row.error_type,
+    },
     {
       key: "message",
       label: "message",
       render: (row) => <span className="text-rose-600">{row.message || "—"}</span>,
+      sortValue: (row) => row.message,
+      searchValue: (row) => row.message,
     },
   ];
   return (
@@ -199,6 +238,7 @@ function ErrorsTable({ rows }: { rows: RecentError[] }) {
       columns={columns}
       rowKey={(row) => `${row.trace_id}-${row.step}-${row.time}`}
       emptyTitle="No recent errors"
+      defaultSort={{ key: "time", direction: "desc" }}
     />
   );
 }

@@ -1,0 +1,109 @@
+{
+  "name": "dental_conversation_scenarios",
+  "version": "1.0",
+  "description": "Conversation-level evaluation: 10 scenarios, each with 4-6 user turns sharing one session_id.",
+  "scenarios": [
+    {
+      "scenario_key": "clinic_basic_consultation",
+      "title": "Khách hỏi thông tin phòng khám",
+      "turns": [
+        {"query": "Xin chào", "expected_intent": "GREETING"},
+        {"query": "Phòng khám ở đâu vậy?", "expected_intent": "CLINIC_INFO"},
+        {"query": "Hôm nay mở cửa tới mấy giờ?", "expected_intent": "CLINIC_INFO"},
+        {"query": "Cho tôi xin số điện thoại để đặt lịch", "expected_intent": "CLINIC_INFO"},
+        {"query": "Cảm ơn bạn", "expected_intent": "CHITCHAT"}
+      ]
+    },
+    {
+      "scenario_key": "whitening_service_follow_up",
+      "title": "Tẩy trắng răng nhiều lượt",
+      "turns": [
+        {"query": "Dịch vụ tẩy trắng răng giá bao nhiêu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"]},
+        {"query": "Mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Có đau không?", "expected_intent": "FAQ", "expected_entities": ["Tẩy trắng răng"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Sau khi làm có cần kiêng gì không?", "expected_intent": "FAQ", "expected_entities": ["Tẩy trắng răng"], "metadata": {"requires_follow_up_memory": true}}
+      ]
+    },
+    {
+      "scenario_key": "aquajet_product_follow_up",
+      "title": "Sản phẩm AquaJet và follow-up",
+      "turns": [
+        {"query": "Cho tôi thông tin AquaJet Mini Water Flosser", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["AquaJet Mini Water Flosser"]},
+        {"query": "Còn hàng không?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["AquaJet Mini Water Flosser"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Giá bao nhiêu?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["AquaJet Mini Water Flosser"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "So sánh nó với FlossEase Waxed Dental Floss", "expected_intent": "PRODUCT_COMPARE", "expected_entities": ["AquaJet Mini Water Flosser", "FlossEase Waxed Dental Floss"], "metadata": {"requires_follow_up_memory": true}}
+      ]
+    },
+    {
+      "scenario_key": "implant_service_filter_and_safety",
+      "title": "Dịch vụ implant theo nhu cầu",
+      "turns": [
+        {"query": "Phòng khám có dịch vụ nào liên quan đến implant?", "expected_intent": "SERVICE_LIST"},
+        {"query": "Dịch vụ trồng răng implant mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Trồng răng implant"]},
+        {"query": "Chi phí khoảng bao nhiêu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Trồng răng implant"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Làm implant có đau không?", "expected_intent": "FAQ", "expected_entities": ["Trồng răng implant"]}
+      ]
+    },
+    {
+      "scenario_key": "wisdom_tooth_care",
+      "title": "Nhổ răng khôn và chăm sóc sau điều trị",
+      "turns": [
+        {"query": "Chi phí nhổ răng khôn là bao nhiêu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Nhổ răng khôn"]},
+        {"query": "Có đau không?", "expected_intent": "FAQ", "expected_entities": ["Nhổ răng khôn"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Sau khi nhổ cần kiêng gì?", "expected_intent": "FAQ", "expected_entities": ["Nhổ răng khôn"]},
+        {"query": "Nếu bị sưng mặt thì xử lý sao?", "expected_intent": "FAQ"}
+      ]
+    },
+    {
+      "scenario_key": "product_list_filter_sort",
+      "title": "Danh sách sản phẩm, filter và sort",
+      "turns": [
+        {"query": "Cho tôi danh sách sản phẩm đang có", "expected_intent": "PRODUCT_LIST"},
+        {"query": "Có sản phẩm nào dưới 500k không?", "expected_intent": "PRODUCT_LIST"},
+        {"query": "Sắp xếp theo giá tăng dần", "expected_intent": "PRODUCT_LIST", "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Trong số đó loại nào còn hàng?", "expected_intent": "PRODUCT_LIST", "metadata": {"requires_follow_up_memory": true}}
+      ]
+    },
+    {
+      "scenario_key": "toothpaste_compare_follow_up",
+      "title": "So sánh kem đánh răng và hỏi tiếp",
+      "turns": [
+        {"query": "So sánh FreshMint Total Protection Toothpaste và EnamelGuard Sensitive Toothpaste", "expected_intent": "PRODUCT_COMPARE", "expected_entities": ["FreshMint Total Protection Toothpaste", "EnamelGuard Sensitive Toothpaste"]},
+        {"query": "Loại nào phù hợp răng nhạy cảm hơn?", "expected_intent": "FAQ", "expected_entities": ["FreshMint Total Protection Toothpaste", "EnamelGuard Sensitive Toothpaste"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "EnamelGuard giá bao nhiêu?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["EnamelGuard Sensitive Toothpaste"]},
+        {"query": "Còn hàng không?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["EnamelGuard Sensitive Toothpaste"], "metadata": {"requires_follow_up_memory": true}}
+      ]
+    },
+    {
+      "scenario_key": "ambiguous_product_clarification",
+      "title": "Câu hỏi mơ hồ rồi làm rõ sản phẩm",
+      "turns": [
+        {"query": "Tôi muốn xem bàn chải", "expected_intent": "PRODUCT_LIST"},
+        {"query": "Bàn chải điện thì sao?", "expected_intent": "PRODUCT_LIST"},
+        {"query": "DentaCare Sonic X1 Electric Toothbrush giá bao nhiêu?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["DentaCare Sonic X1 Electric Toothbrush"]},
+        {"query": "Còn hàng không?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["DentaCare Sonic X1 Electric Toothbrush"], "metadata": {"requires_follow_up_memory": true}}
+      ]
+    },
+    {
+      "scenario_key": "social_then_service",
+      "title": "Chitchat rồi quay lại tư vấn dịch vụ",
+      "turns": [
+        {"query": "Bạn có thể tư vấn giúp tôi không?", "expected_intent": "CHITCHAT"},
+        {"query": "Tôi bị ê buốt răng thì nên hỏi gì?", "expected_intent": "FAQ"},
+        {"query": "Phòng khám có dịch vụ tẩy trắng răng không?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"]},
+        {"query": "Dịch vụ đó mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Cảm ơn nhé", "expected_intent": "CHITCHAT"}
+      ]
+    },
+    {
+      "scenario_key": "multi_intent_service_price_and_faq",
+      "title": "Một câu nhiều intent rồi follow-up",
+      "turns": [
+        {"query": "Tẩy trắng răng giá bao nhiêu và có đau không?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"], "metadata": {"expects_multi_task": true}},
+        {"query": "Mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Phòng khám mở cửa cuối tuần không?", "expected_intent": "CLINIC_INFO"},
+        {"query": "Cho tôi số điện thoại", "expected_intent": "CLINIC_INFO"}
+      ]
+    }
+  ]
+}

@@ -31,6 +31,114 @@ def load_jsonl(path: Path) -> list[dict[str, Any]]:
     return cases
 
 
+def load_cases(path: Path) -> list[dict[str, Any]]:
+    if path.suffix.lower() == ".json":
+        return load_json_dataset(path)
+    return load_jsonl(path)
+
+
+def load_json_dataset(path: Path) -> list[dict[str, Any]]:
+    with path.open(encoding="utf-8") as source:
+        payload = json.load(source)
+    if not isinstance(payload, dict):
+        raise ValueError("Evaluation JSON must be an object")
+    if "scenarios" in payload:
+        return load_conversation_scenarios(path, payload=payload)
+    if "groups" in payload:
+        return load_semantic_groups(path, payload=payload)
+    raise ValueError("Evaluation JSON must contain either groups or scenarios")
+
+
+def load_semantic_groups(
+    path: Path,
+    *,
+    payload: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    if payload is None:
+        with path.open(encoding="utf-8") as source:
+            payload = json.load(source)
+    groups = payload.get("groups") if isinstance(payload, dict) else None
+    if not isinstance(groups, list):
+        raise ValueError("Semantic evaluation JSON must contain a groups array")
+    cases: list[dict[str, Any]] = []
+    for group_index, group in enumerate(groups, start=1):
+        if not isinstance(group, dict):
+            raise ValueError(f"Semantic group #{group_index} must be an object")
+        group_key = str(group.get("case_group") or f"group_{group_index}")
+        queries = group.get("queries")
+        if not isinstance(queries, list) or not queries:
+            raise ValueError(f"Semantic group {group_key!r} has no queries")
+        for query_index, query in enumerate(queries, start=1):
+            case = {
+                key: value
+                for key, value in group.items()
+                if key not in {"case_group", "queries", "expected_behavior"}
+            }
+            metadata = dict(case.get("metadata") or {})
+            metadata["case_group"] = group_key
+            if group.get("expected_behavior") is not None:
+                metadata["expected_behavior"] = group["expected_behavior"]
+            case["metadata"] = metadata
+            case["case_key"] = f"{group_key}:{query_index:02d}"
+            case["query"] = str(query)
+            cases.append(_normalize_case(case, query_index))
+    if not cases:
+        raise ValueError("Semantic evaluation dataset is empty")
+    return cases
+
+
+def load_conversation_scenarios(
+    path: Path,
+    *,
+    payload: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    if payload is None:
+        with path.open(encoding="utf-8") as source:
+            payload = json.load(source)
+    scenarios = payload.get("scenarios") if isinstance(payload, dict) else None
+    if not isinstance(scenarios, list):
+        raise ValueError("Conversation evaluation JSON must contain a scenarios array")
+    cases: list[dict[str, Any]] = []
+    for scenario_index, scenario in enumerate(scenarios, start=1):
+        if not isinstance(scenario, dict):
+            raise ValueError(f"Conversation scenario #{scenario_index} must be an object")
+        scenario_key = str(scenario.get("scenario_key") or f"scenario_{scenario_index:02d}")
+        turns = scenario.get("turns")
+        if not isinstance(turns, list) or not turns:
+            raise ValueError(f"Conversation scenario {scenario_key!r} has no turns")
+        if not 4 <= len(turns) <= 6:
+            raise ValueError(
+                f"Conversation scenario {scenario_key!r} must contain 4-6 turns"
+            )
+        for turn_index, turn in enumerate(turns, start=1):
+            if not isinstance(turn, dict):
+                raise ValueError(
+                    f"Conversation scenario {scenario_key!r} turn #{turn_index} "
+                    "must be an object"
+                )
+            metadata = dict(scenario.get("metadata") or {})
+            metadata.update(dict(turn.get("metadata") or {}))
+            metadata["scenario_key"] = scenario_key
+            metadata["scenario_title"] = scenario.get("title")
+            metadata["turn_index"] = turn_index
+            metadata["conversation_session_key"] = scenario_key
+            case = {
+                "case_key": f"{scenario_key}:turn_{turn_index:02d}",
+                "query": turn.get("query"),
+                "expected_intent": turn.get("expected_intent"),
+                "expected_answer_type": turn.get("expected_answer_type"),
+                "expected_entities": turn.get("expected_entities", []),
+                "expected_source_keys": turn.get("expected_source_keys", []),
+                "expected_answer_contains": turn.get("expected_answer_contains", []),
+                "forbidden_answer_contains": turn.get("forbidden_answer_contains", []),
+                "metadata": metadata,
+            }
+            cases.append(_normalize_case(case, turn_index))
+    if not cases:
+        raise ValueError("Conversation evaluation dataset is empty")
+    return cases
+
+
 def ensure_dataset(
     session: Session,
     *,
@@ -38,7 +146,7 @@ def ensure_dataset(
     name: str = "dental_basic_eval",
     version: str = "2.0",
 ) -> tuple[EvaluationDataset, list[dict[str, Any]]]:
-    cases = load_jsonl(path)
+    cases = load_cases(path)
     content_hash = _content_hash(cases)
     dataset = session.scalar(
         select(EvaluationDataset).where(
@@ -180,6 +288,20 @@ def _dataset_metadata(cases: list[dict[str, Any]], path: Path) -> dict[str, Any]
     return {
         "source_path": str(path),
         "case_count": len(cases),
+        "semantic_group_count": len(
+            {
+                case.get("metadata", {}).get("case_group")
+                for case in cases
+                if case.get("metadata", {}).get("case_group")
+            }
+        ),
+        "conversation_scenario_count": len(
+            {
+                case.get("metadata", {}).get("scenario_key")
+                for case in cases
+                if case.get("metadata", {}).get("scenario_key")
+            }
+        ),
         "retrieval_ground_truth_cases": grounded,
         "answer_ground_truth_cases": answer_grounded,
     }

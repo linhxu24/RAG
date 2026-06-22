@@ -15,6 +15,9 @@ Web UI vận hành và kiểm thử hệ thống SimplyDent Multimodal RAG.
 Không có màn hình đăng nhập. Mỗi page có query/error boundary riêng; Chatbot lỗi không làm
 Evaluation, Observability, Trace Explorer hoặc Ingestion Monitor crash.
 
+Chat requests không có timeout phía browser vì demo có thể chạy các model Ollama local chậm.
+Frontend giữ trạng thái loading cho đến khi backend trả response hoặc kết nối thực sự thất bại.
+
 ## Install
 
 ```bash
@@ -75,10 +78,12 @@ npm run build
 3. Document Store: list, detail drawer, activate, archive, re-ingest.
 4. Ingestion Monitor: summary cards, runs và pipeline timeline.
 5. Retrieval Playground: structured/dense/sparse/RRF/reranker/HyDE controls.
-6. Evaluation Dashboard: deterministic/production runs, coverage, grounded metrics, per-intent
-   charts, diagnostics và case-level violations/trace IDs.
+6. Evaluation Dashboard: chọn bộ basic/multi-turn/semantic, chạy deterministic/production,
+   xem grounded metrics, entity-binding/follow-up/multi-task scores, scenario pass rate,
+   diagnostics và case-level violations/trace IDs.
 7. Observability: health, request metrics, automatic diagnostic alerts và recent errors.
-8. Trace Explorer: search, recent traces, step timeline và JSON details.
+8. Trace Explorer: search/deep-link theo `trace_id`, recent traces, step timeline, token usage,
+   GLiNER spans, context-binding decisions, conversation state và JSON details.
 9. Asset Manager: preview, broken-image fallback và usage details.
 10. Data Tables: products, services, FAQs, clinic info, tables, rows, chunks.
 11. Settings: frontend URLs và read-only backend RAG settings.

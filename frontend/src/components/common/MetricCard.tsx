@@ -21,18 +21,18 @@ export function MetricCard({
     violet: "bg-violet-50 text-violet-700",
   };
   return (
-    <div className="panel flex min-h-32 flex-col justify-between p-5">
+    <div className="panel flex min-h-24 flex-col justify-between p-4">
       <div className="flex items-start justify-between gap-3">
-        <span className="text-sm font-semibold text-slate-500">{label}</span>
+        <span className="text-xs font-semibold text-slate-500">{label}</span>
         {Icon && (
-          <span className={`rounded-xl p-2.5 ${accents[accent]}`}>
-            <Icon size={18} />
+          <span className={`rounded-lg p-2 ${accents[accent]}`}>
+            <Icon size={15} />
           </span>
         )}
       </div>
       <div>
-        <div className="text-2xl font-bold tracking-tight text-slate-900">{value}</div>
-        {hint && <div className="mt-1 text-xs text-slate-400">{hint}</div>}
+        <div className="text-xl font-bold tracking-tight text-slate-900">{value}</div>
+        {hint && <div className="mt-0.5 text-[10px] text-slate-400">{hint}</div>}
       </div>
     </div>
   );

@@ -5,7 +5,13 @@ import {
   getDataTable,
   type DataTableName,
 } from "../../api/dataTables";
-import { truncate } from "../../utils/format";
+import {
+  formatCurrency,
+  formatDuration,
+  formatNumber,
+  formatUnknownValue,
+  truncate,
+} from "../../utils/format";
 import { DataTable, type Column } from "../common/DataTable";
 import { ErrorState, LoadingState } from "../common/States";
 import { StatusBadge } from "../common/StatusBadge";
@@ -70,29 +76,60 @@ function DynamicTable({
     products: [
       "name",
       "category",
+      "category_code",
+      "source_category",
+      "brand",
+      "model",
       "description",
       "price",
+      "currency",
       "quantity",
       "asset_id",
       "source_doc_id",
+      "source_row_id",
       "status",
       "version",
     ],
     services: [
       "name",
+      "category_code",
+      "source_category",
       "description",
       "duration_minutes",
       "price",
+      "currency",
+      "symptoms",
+      "indications",
+      "contraindications",
       "source_doc_id",
+      "source_row_id",
       "status",
       "version",
     ],
-    faqs: ["question", "answer", "category", "is_active", "embedding_status"],
+    faqs: [
+      "question",
+      "answer",
+      "category",
+      "category_code",
+      "keywords",
+      "is_active",
+      "source_doc_id",
+      "embedding_status",
+    ],
     "clinic-info": ["key", "value", "status", "source_doc_id"],
-    tables: ["table_id", "doc_id", "table_name", "page_number", "status"],
+    tables: [
+      "table_id",
+      "doc_id",
+      "table_name",
+      "page_number",
+      "table_markdown",
+      "status",
+    ],
     "table-rows": [
       "row_id",
       "table_id",
+      "doc_id",
+      "row_index",
       "entity_type",
       "entity_name",
       "row_text",
@@ -118,7 +155,35 @@ function DynamicTable({
       if (key === "status" || key === "embedding_status") {
         return <StatusBadge status={String(value || "unknown")} />;
       }
+      if (key === "price") {
+        return (
+          <span className="whitespace-nowrap text-xs font-semibold text-slate-800">
+            {formatCurrency(
+              typeof value === "number" ? value : Number(value),
+              String(row.currency || "VND"),
+            )}
+          </span>
+        );
+      }
+      if (key === "duration_minutes") {
+        return <span className="whitespace-nowrap text-xs">{formatDuration(Number(value))}</span>;
+      }
+      if (key === "quantity" || key === "version" || key === "row_index") {
+        return <span className="text-xs">{formatNumber(Number(value))}</span>;
+      }
+      if (key === "is_active") {
+        return (
+          <StatusBadge status={value ? "active" : "disabled"} />
+        );
+      }
       if (typeof value === "object" && value !== null) {
+        if (Array.isArray(value)) {
+          return (
+            <span className="line-clamp-3 text-xs" title={formatUnknownValue(value)}>
+              {truncate(formatUnknownValue(value), 100)}
+            </span>
+          );
+        }
         return (
           <details>
             <summary className="cursor-pointer text-xs font-semibold text-teal-700">
@@ -139,6 +204,9 @@ function DynamicTable({
         </span>
       );
     },
+    sortValue: (row) =>
+      key === "status" ? statusPriority(String(row[key] || "unknown")) : row[key],
+    searchValue: (row) => formatUnknownValue(row[key]),
   }));
   return (
     <DataTable
@@ -157,6 +225,34 @@ function DynamicTable({
         )
       }
       emptyTitle={`No ${name} data`}
+      defaultSort={
+        name === "products" || name === "services"
+          ? { key: "status", direction: "asc" }
+          : name === "faqs"
+            ? { key: "question", direction: "asc" }
+            : name === "clinic-info"
+              ? { key: "key", direction: "asc" }
+              : name === "tables"
+                ? { key: "table_id", direction: "asc" }
+          : name === "table-rows"
+            ? { key: "table_id", direction: "asc" }
+            : name === "chunks"
+              ? { key: "doc_id", direction: "asc" }
+              : undefined
+      }
     />
   );
+}
+
+function statusPriority(status: string): number {
+  const priorities: Record<string, number> = {
+    active: 0,
+    approved: 1,
+    review_required: 2,
+    parsed: 3,
+    draft: 4,
+    archived: 5,
+    failed: 6,
+  };
+  return priorities[status] ?? 99;
 }

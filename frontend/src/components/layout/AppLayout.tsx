@@ -10,7 +10,7 @@ export function AppLayout() {
     <div className="min-h-screen">
       <Sidebar />
       <Header />
-      <main className="ml-[252px] min-h-screen pt-[72px]">
+      <main className="ml-14 min-h-screen pt-15">
         <PageErrorBoundary resetKey={location.pathname}>
           <Outlet />
         </PageErrorBoundary>

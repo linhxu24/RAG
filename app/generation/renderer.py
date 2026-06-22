@@ -35,5 +35,6 @@ class ResponseRenderer:
             answer_type=response.answer_type,
             answer=response.result,
             safety=response.safety,
+            degraded=response.degraded,
             debug={"enabled": debug, **(debug_data or {})} if debug else {"enabled": False},
         )

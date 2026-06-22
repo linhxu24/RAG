@@ -1,0 +1,90 @@
+{
+  "groups": [
+    {
+      "case_group": "product_list_available",
+      "expected_intent": "PRODUCT_LIST",
+      "expected_answer_type": "rag",
+      "expected_behavior": {
+        "must_return_item_type": "product",
+        "min_items": 1,
+        "must_not_use_unknown": true
+      },
+      "queries": [
+        "Cho tôi danh sách sản phẩm đang có",
+        "Shop hiện có những sản phẩm nào?",
+        "Tôi muốn xem các sản phẩm hiện có",
+        "Liệt kê sản phẩm còn trong dữ liệu"
+      ]
+    },
+    {
+      "case_group": "product_price_filter",
+      "expected_intent": "PRODUCT_LIST",
+      "expected_behavior": {
+        "must_return_item_type": "product",
+        "all_items_price_lte": 2000000
+      },
+      "queries": [
+        "Sản phẩm nào dưới 2 triệu?",
+        "Có món nào giá dưới 2.000.000 không?",
+        "Tôi muốn sản phẩm rẻ hơn 2 triệu",
+        "Lọc sản phẩm tối đa 2 triệu"
+      ]
+    },
+    {
+      "case_group": "product_sort_price_asc",
+      "expected_intent": "PRODUCT_LIST",
+      "expected_behavior": {
+        "must_return_item_type": "product",
+        "sort_by": "price",
+        "sort_direction": "asc"
+      },
+      "queries": [
+        "Sắp xếp sản phẩm theo giá tăng dần",
+        "Cho tôi sản phẩm từ rẻ đến đắt",
+        "Liệt kê sản phẩm giá thấp đến cao"
+      ]
+    },
+    {
+      "case_group": "service_implant_price_filter",
+      "expected_intent": "SERVICE_LIST",
+      "expected_behavior": {
+        "must_return_item_type": "service",
+        "category_code": "IMPLANT",
+        "price_lte": 2000000,
+        "allow_empty": true,
+        "must_not_return_other_categories": true
+      },
+      "queries": [
+        "Dịch vụ nào liên quan đến implant và dưới 2 triệu?",
+        "Có dịch vụ implant nào rẻ hơn 2 triệu không?",
+        "Trồng răng dưới 2 triệu có dịch vụ nào không?"
+      ]
+    },
+    {
+      "case_group": "service_duration_whitening",
+      "expected_intent": "SERVICE_DETAIL",
+      "expected_behavior": {
+        "must_return_item_type": "service",
+        "must_include_duration": true
+      },
+      "queries": [
+        "Tẩy trắng răng mất bao lâu?",
+        "Dịch vụ tẩy trắng răng thường kéo dài bao nhiêu phút?",
+        "Làm trắng răng tại phòng khám cần bao nhiêu thời gian?"
+      ]
+    },
+    {
+      "case_group": "faq_same_meaning_pain",
+      "expected_intent": "FAQ",
+      "expected_behavior": {
+        "must_return_item_type_any_of": ["faq", "chunk", "table_row"],
+        "must_not_invent_medical_advice": true
+      },
+      "queries": [
+        "Nhổ răng có đau không?",
+        "Khi nhổ răng thì có bị đau nhiều không?",
+        "Tôi sợ đau khi nhổ răng, phòng khám tư vấn thế nào?"
+      ]
+    }
+  ]
+}

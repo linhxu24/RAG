@@ -16,6 +16,10 @@ from app.db.models import (
 )
 from app.evaluation.diagnostics import build_diagnostics
 from app.evaluation.eval_assets import evaluate_assets
+from app.evaluation.eval_conversation import (
+    evaluate_conversation,
+    evaluate_conversation_case,
+)
 from app.evaluation.eval_e2e import evaluate_e2e
 from app.evaluation.eval_generation import evaluate_generation
 from app.evaluation.eval_retrieval import (
@@ -111,11 +115,12 @@ async def run_pipeline_evaluation(
         session.add(result)
         session.commit()
         try:
+            eval_session_key = _evaluation_session_key(case)
             response = await service.chat(
                 session,
                 ChatRequest(
                     message=case["query"],
-                    session_id=f"evaluation:{run.eval_run_id}:{case['case_id']}",
+                    session_id=f"evaluation:{run.eval_run_id}:{eval_session_key}",
                 ),
             )
             latency_ms = (time.perf_counter() - started) * 1000
@@ -142,6 +147,13 @@ async def run_pipeline_evaluation(
                 retrieved_ids,
                 resolution.expected_ids,
             )
+            conversation_scores, conversation_details, conversation_violations = (
+                evaluate_conversation_case(
+                    case=case,
+                    trace_steps=step_payloads,
+                )
+            )
+            violations.extend(conversation_violations)
             intent_match = (
                 float(response.intent.value == case["expected_intent"])
                 if case.get("expected_intent")
@@ -175,6 +187,7 @@ async def run_pipeline_evaluation(
                 "intent_match": intent_match,
                 **retrieval_scores,
                 **answer_scores,
+                **conversation_scores,
                 "no_result_match": no_result_match,
                 "retrieval_mode_match": retrieval_mode_match,
                 "json_valid": 1.0,
@@ -203,6 +216,9 @@ async def run_pipeline_evaluation(
                 scores.get("no_result_match"),
                 scores.get("retrieval_pass"),
                 scores.get("retrieval_mode_match"),
+                scores.get("entity_binding_match"),
+                scores.get("follow_up_memory"),
+                scores.get("multi_task_match"),
             ]
             applicable = [value for value in required_scores if value is not None]
             passed = bool(applicable) and all(value >= 1.0 for value in applicable)
@@ -240,6 +256,7 @@ async def run_pipeline_evaluation(
                 "no_result": no_result,
                 "assets": response.answer.assets,
                 "missing_assets": response.answer.missing_assets,
+                "conversation": conversation_details,
             }
             result.trace_id = trace_id
             result.actual_intent = response.intent.value
@@ -304,6 +321,7 @@ async def run_pipeline_evaluation(
     reranker = evaluate_reranker(reranker_records)
     router = _router_metrics(case_payloads)
     e2e = evaluate_e2e(case_payloads)
+    conversation = evaluate_conversation(case_payloads)
     per_intent = _per_intent(case_payloads)
     diagnostics = build_diagnostics(
         case_results=case_payloads,
@@ -317,6 +335,7 @@ async def run_pipeline_evaluation(
         "generation": generation,
         "assets": assets,
         "e2e": e2e,
+        "conversation": conversation,
         "coverage": _coverage(case_payloads),
         "per_intent": per_intent,
         "diagnostics": diagnostics,
@@ -559,6 +578,17 @@ def _result_payload(result: EvaluationCaseResult) -> dict[str, Any]:
         "details": result.details or {},
         "error_message": result.error_message,
     }
+
+
+def _evaluation_session_key(case: dict[str, Any]) -> str:
+    metadata = case.get("metadata") if isinstance(case, dict) else None
+    if isinstance(metadata, dict):
+        scenario_key = metadata.get("conversation_session_key") or metadata.get(
+            "scenario_key"
+        )
+        if scenario_key:
+            return f"scenario:{scenario_key}"
+    return str(case["case_id"])
 
 
 def _unique(values: list[str]) -> list[str]:

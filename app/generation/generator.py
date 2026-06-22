@@ -1,14 +1,19 @@
+import json
+import re
 from typing import Any
 
 from app.config import Settings
 from app.constants import Intent
-from app.generation.ollama_client import OllamaClient
+from app.generation.llm_client import LLMClient
 from app.generation.prompts import (
     CHITCHAT_SYSTEM_PROMPT,
+    SYNTHESIS_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
     build_chitchat_prompt,
     build_generation_prompt,
     build_json_fix_prompt,
+    build_synthesis_json_fix_prompt,
+    build_synthesis_prompt,
 )
 from app.generation.schemas import (
     EntityReference,
@@ -17,6 +22,7 @@ from app.generation.schemas import (
     ResultItem,
     SafetyInfo,
     SourceReference,
+    SynthesisOutput,
 )
 from app.generation.validator import ResponseValidationError, ResponseValidator
 
@@ -28,9 +34,9 @@ class GenerationValidationError(ResponseValidationError):
 
 
 class GroundedGenerator:
-    def __init__(self, settings: Settings, ollama: OllamaClient):
+    def __init__(self, settings: Settings, llm: LLMClient):
         self.settings = settings
-        self.ollama = ollama
+        self.llm = llm
         self.validator = ResponseValidator()
 
     async def generate_with_retry(
@@ -50,11 +56,14 @@ class GroundedGenerator:
             entities=entities,
             context=context,
         )
-        first = await self.ollama.generate(
+        first = await self.llm.generate(
             prompt=prompt,
-            model=self.settings.ollama_generation_model,
+            model=self.settings.llm_generation_model,
             system=SYSTEM_PROMPT,
             json_mode=True,
+            timeout_seconds=self.settings.llm_generation_timeout_seconds,
+            num_predict=self.settings.llm_generation_num_predict,
+            num_ctx=self.settings.llm_generation_num_ctx,
         )
         attempts = [first.trace_metadata()]
         try:
@@ -70,11 +79,14 @@ class GroundedGenerator:
                 "validation": {"valid": True, "retried": False},
             }
         except ResponseValidationError as first_error:
-            fixed = await self.ollama.generate(
+            fixed = await self.llm.generate(
                 prompt=build_json_fix_prompt(first.text, str(first_error)),
-                model=self.settings.ollama_generation_model,
+                model=self.settings.llm_generation_model,
                 system=SYSTEM_PROMPT,
                 json_mode=True,
+                timeout_seconds=self.settings.llm_generation_timeout_seconds,
+                num_predict=self.settings.llm_generation_num_predict,
+                num_ctx=self.settings.llm_generation_num_ctx,
             )
             attempts.append(fixed.trace_metadata())
             try:
@@ -116,18 +128,22 @@ class GroundedGenerator:
         query: str,
         confidence: float,
         session,
+        intent: Intent = Intent.CHITCHAT,
     ) -> tuple[GeneratedResponse, dict[str, Any]]:
         prompt = build_chitchat_prompt(
             query=query,
-            intent=Intent.CHITCHAT,
+            intent=intent,
             confidence=confidence,
         )
         context = {"items": [], "total_chars": 0}
-        first = await self.ollama.generate(
+        first = await self.llm.generate(
             prompt=prompt,
-            model=self.settings.ollama_generation_model,
+            model=self.settings.llm_generation_model,
             system=CHITCHAT_SYSTEM_PROMPT,
             json_mode=True,
+            timeout_seconds=self.settings.llm_generation_timeout_seconds,
+            num_predict=self.settings.llm_generation_num_predict,
+            num_ctx=self.settings.llm_generation_num_ctx,
         )
         attempts = [first.trace_metadata()]
         try:
@@ -143,11 +159,14 @@ class GroundedGenerator:
                 "validation": {"valid": True, "retried": False},
             }
         except ResponseValidationError as first_error:
-            fixed = await self.ollama.generate(
+            fixed = await self.llm.generate(
                 prompt=build_json_fix_prompt(first.text, str(first_error)),
-                model=self.settings.ollama_generation_model,
+                model=self.settings.llm_generation_model,
                 system=CHITCHAT_SYSTEM_PROMPT,
                 json_mode=True,
+                timeout_seconds=self.settings.llm_generation_timeout_seconds,
+                num_predict=self.settings.llm_generation_num_predict,
+                num_ctx=self.settings.llm_generation_num_ctx,
             )
             attempts.append(fixed.trace_metadata())
             try:
@@ -182,6 +201,216 @@ class GroundedGenerator:
                     "first_error": str(first_error),
                 },
             }
+
+    async def generate_synthesis_with_retry(
+        self,
+        *,
+        query: str,
+        intent: Intent,
+        confidence: float,
+        evidence_pack: dict[str, Any],
+        context: dict[str, Any],
+        session,
+    ) -> tuple[GeneratedResponse, dict[str, Any]]:
+        prompt = build_synthesis_prompt(
+            query=query,
+            intent=intent,
+            confidence=confidence,
+            evidence_pack=evidence_pack,
+        )
+        first = await self.llm.generate(
+            prompt=prompt,
+            model=self.settings.llm_generation_model,
+            system=SYNTHESIS_SYSTEM_PROMPT,
+            json_mode=True,
+            timeout_seconds=self.settings.llm_generation_timeout_seconds,
+            num_predict=self.settings.llm_generation_num_predict,
+            num_ctx=self.settings.llm_generation_num_ctx,
+        )
+        attempts = [first.trace_metadata()]
+        try:
+            synthesis = self._validate_synthesis_completion(first)
+            response = self._build_synthesis_response(
+                synthesis=synthesis,
+                intent=intent,
+                confidence=confidence,
+                context=context,
+                session=session,
+            )
+            return response, {
+                "prompt": prompt,
+                "llm": {
+                    "model": first.model,
+                    "latency_ms": first.latency_ms,
+                    "attempt_count": 1,
+                    "attempts": attempts,
+                },
+                "validation": {"valid": True, "retried": False},
+            }
+        except ResponseValidationError as first_error:
+            fixed = await self.llm.generate(
+                prompt=build_synthesis_json_fix_prompt(first.text, str(first_error)),
+                model=self.settings.llm_generation_model,
+                system=SYNTHESIS_SYSTEM_PROMPT,
+                json_mode=True,
+                timeout_seconds=self.settings.llm_generation_timeout_seconds,
+                num_predict=self.settings.llm_generation_num_predict,
+                num_ctx=self.settings.llm_generation_num_ctx,
+            )
+            attempts.append(fixed.trace_metadata())
+            try:
+                synthesis = self._validate_synthesis_completion(fixed)
+                response = self._build_synthesis_response(
+                    synthesis=synthesis,
+                    intent=intent,
+                    confidence=confidence,
+                    context=context,
+                    session=session,
+                )
+            except ResponseValidationError as second_error:
+                raise GenerationValidationError(
+                    str(second_error),
+                    {
+                        "model": fixed.model,
+                        "latency_ms": sum(attempt["latency_ms"] for attempt in attempts),
+                        "attempt_count": len(attempts),
+                        "attempts": attempts,
+                        "validation": {
+                            "valid": False,
+                            "retried": True,
+                            "first_error": str(first_error),
+                            "second_error": str(second_error),
+                        },
+                    },
+                ) from second_error
+            return response, {
+                "prompt": prompt,
+                "llm": {
+                    "model": fixed.model,
+                    "latency_ms": first.latency_ms + fixed.latency_ms,
+                    "attempt_count": 2,
+                    "attempts": attempts,
+                },
+                "validation": {
+                    "valid": True,
+                    "retried": True,
+                    "first_error": str(first_error),
+                },
+            }
+
+    @staticmethod
+    def _validate_synthesis_completion(response) -> SynthesisOutput:
+        if response.done_reason == "length":
+            raise ResponseValidationError("Ollama truncated synthesis output")
+        try:
+            payload = json.loads(_json_payload(response.text))
+            return SynthesisOutput.model_validate(payload)
+        except Exception as exc:
+            if isinstance(exc, ResponseValidationError):
+                raise
+            raise ResponseValidationError(
+                f"Synthesis schema validation failed: {exc}"
+            ) from exc
+
+    def _build_synthesis_response(
+        self,
+        *,
+        synthesis: SynthesisOutput,
+        intent: Intent,
+        confidence: float,
+        context: dict[str, Any],
+        session,
+    ) -> GeneratedResponse:
+        context_items = list(context.get("items", []))
+        by_id = {
+            str(item["source_id"]): item
+            for item in context_items
+            if item.get("source_id")
+        }
+        invalid_ids = [
+            source_id
+            for source_id in synthesis.used_source_ids
+            if source_id not in by_id
+        ]
+        if invalid_ids:
+            raise ResponseValidationError(
+                f"Synthesis referenced unknown source IDs: {invalid_ids}"
+            )
+        selected_ids = list(dict.fromkeys(synthesis.used_source_ids))
+        selected = (
+            [by_id[source_id] for source_id in selected_ids]
+            if selected_ids
+            else context_items
+        )
+        required_task_ids = {
+            str(task.get("task_id"))
+            for task in context.get("tasks", [])
+            if isinstance(task, dict) and task.get("task_id")
+        }
+        selected_task_ids = {
+            str(item.get("source", {}).get("task_id"))
+            for item in selected
+            if item.get("source", {}).get("task_id")
+        }
+        missing_task_ids = sorted(required_task_ids - selected_task_ids)
+        if missing_task_ids:
+            raise ResponseValidationError(
+                "Synthesis did not cite evidence for task IDs: "
+                f"{missing_task_ids}"
+            )
+        result_items = [self._result_item(item) for item in selected]
+        sources = [
+            SourceReference(
+                source_type=item["source_type"],
+                source_id=item["source_id"],
+                doc_id=item.get("source", {}).get("doc_id"),
+                page_number=item.get("source", {}).get("page_number"),
+            )
+            for item in selected
+        ]
+        entities = [
+            EntityReference(
+                type=self._entity_type(item["source_type"]),
+                name=str(
+                    item.get("raw_json", {}).get("name")
+                    or item.get("raw_json", {}).get("question")
+                    or item.get("raw_json", {}).get("key")
+                    or item["source_type"]
+                ),
+                matched_id=item["source_id"],
+            )
+            for item in selected
+            if item["source_type"] in {"product", "service", "faq", "clinic_info"}
+        ]
+        faq_task = any(
+            task.get("intent") == Intent.FAQ.value
+            for task in context.get("tasks", [])
+            if isinstance(task, dict)
+        )
+        response = GeneratedResponse(
+            intent=intent,
+            confidence=confidence,
+            answer_type="rag",
+            entities=entities,
+            result=ResultBody(
+                text=synthesis.answer,
+                items=result_items,
+                sources=sources,
+            ),
+            safety=SafetyInfo(
+                medical_disclaimer_required=(
+                    synthesis.medical_disclaimer_required
+                    or intent == Intent.FAQ
+                    or faq_task
+                ),
+                needs_human_support=synthesis.needs_human_support,
+            ),
+        )
+        return self.validator.validate(
+            response.model_dump(mode="json"),
+            context=context,
+            session=session,
+        )
 
     def direct_response(
         self,
@@ -249,6 +478,20 @@ class GroundedGenerator:
                 "Bạn vui lòng nêu rõ tên các sản phẩm.",
             )
         if not items:
+            if intent == Intent.PRODUCT_LIST:
+                return self._simple(
+                    intent,
+                    confidence,
+                    "fallback",
+                    "Tôi chưa tìm thấy sản phẩm nào đáp ứng các điều kiện bạn yêu cầu.",
+                )
+            if intent == Intent.SERVICE_LIST:
+                return self._simple(
+                    intent,
+                    confidence,
+                    "fallback",
+                    "Tôi chưa tìm thấy dịch vụ nào đáp ứng các điều kiện bạn yêu cầu.",
+                )
             return self._simple(
                 intent,
                 confidence,
@@ -257,10 +500,27 @@ class GroundedGenerator:
             )
 
         if intent == Intent.FAQ and items[0]["source_type"] == "faq":
-            text = str(items[0].get("raw_json", {}).get("answer") or items[0]["text"])
-        elif intent in {Intent.PRODUCT_LIST, Intent.SERVICE_LIST}:
-            label = "Sản phẩm" if intent == Intent.PRODUCT_LIST else "Dịch vụ"
-            text = f"Tìm thấy {len(items)} {label.lower()} phù hợp."
+            text = self._format_faq(items[0])
+        elif intent == Intent.PRODUCT_LIST:
+            text = self._format_product_list(items)
+        elif intent == Intent.SERVICE_LIST:
+            text = self._format_service_list(items)
+        elif intent == Intent.PRODUCT_DETAIL and items[0]["source_type"] == "product":
+            product_items = [item for item in items if item["source_type"] == "product"]
+            text = (
+                self._format_product_detail(product_items[0])
+                if len(product_items) == 1
+                else self._format_product_list(product_items)
+            )
+        elif intent == Intent.SERVICE_DETAIL and items[0]["source_type"] == "service":
+            service_items = [item for item in items if item["source_type"] == "service"]
+            text = (
+                self._format_service_detail(service_items[0])
+                if len(service_items) == 1
+                else self._format_service_list(service_items)
+            )
+        elif intent == Intent.PRODUCT_COMPARE:
+            text = self._format_product_compare(items)
         else:
             text = "\n".join(item["text"] for item in items)
 
@@ -310,10 +570,33 @@ class GroundedGenerator:
             confidence=confidence,
             context=self._focused_fallback_context(intent, context),
         )
+        response.degraded = True
         if response.answer_type == "direct_data":
-            response.answer_type = "rag"
+            response.answer_type = "fallback"
             response.result.text += (
-                "\n\nThông tin trên được tổng hợp trực tiếp từ dữ liệu hiện có của phòng khám."
+                "\n\nĐây là câu trả lời dự phòng từ dữ liệu đã truy xuất vì bước diễn đạt "
+                "tự nhiên không hoàn tất."
+            )
+        return response
+
+    def partial_evidence_response(
+        self,
+        *,
+        intent: Intent,
+        confidence: float,
+        context: dict[str, Any],
+        missing_info: list[str],
+    ) -> GeneratedResponse:
+        response = self.direct_response(
+            intent=intent,
+            confidence=confidence,
+            context=context,
+        )
+        if response.answer_type == "direct_data":
+            response.answer_type = "fallback"
+        if missing_info:
+            response.result.text += "\n\n" + "\n".join(
+                f"- {message}" for message in missing_info
             )
         return response
 
@@ -373,6 +656,133 @@ class GroundedGenerator:
         )
 
     @staticmethod
+    def _format_money(value: Any, currency: str | None = "VND") -> str | None:
+        if value is None:
+            return None
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return f"{value} {currency or ''}".strip()
+        if currency == "VND":
+            return f"{numeric:,.0f} VND".replace(",", ".")
+        return f"{numeric:g} {currency or ''}".strip()
+
+    @classmethod
+    def _format_product_list(cls, items: list[dict[str, Any]]) -> str:
+        products = [item for item in items if item["source_type"] == "product"]
+        if not products:
+            return "Hiện tại tôi chưa tìm thấy sản phẩm phù hợp trong dữ liệu phòng khám."
+        lines = [f"Mình tìm thấy {len(products)} sản phẩm phù hợp:"]
+        for index, item in enumerate(products[:10], start=1):
+            raw = item.get("raw_json", {})
+            details = []
+            price = cls._format_money(raw.get("price"), raw.get("currency"))
+            if price:
+                details.append(f"giá {price}")
+            if raw.get("category"):
+                details.append(f"danh mục {raw['category']}")
+            if raw.get("quantity") is not None:
+                details.append(f"còn {raw['quantity']}")
+            suffix = f" ({', '.join(details)})" if details else ""
+            lines.append(f"{index}. {raw.get('name') or item['text']}{suffix}")
+        if len(products) > 10:
+            lines.append(f"Còn {len(products) - 10} sản phẩm khác trong kết quả.")
+        return "\n".join(lines)
+
+    @classmethod
+    def _format_service_list(cls, items: list[dict[str, Any]]) -> str:
+        services = [item for item in items if item["source_type"] == "service"]
+        if not services:
+            return "Hiện tại tôi chưa tìm thấy dịch vụ phù hợp trong dữ liệu phòng khám."
+        lines = [f"Mình tìm thấy {len(services)} dịch vụ phù hợp:"]
+        for index, item in enumerate(services[:10], start=1):
+            raw = item.get("raw_json", {})
+            details = []
+            if raw.get("duration_minutes") is not None:
+                details.append(f"{raw['duration_minutes']} phút")
+            price = cls._format_money(raw.get("price"), raw.get("currency"))
+            if price:
+                details.append(f"giá {price}")
+            category = raw.get("source_category") or raw.get("category_code")
+            if category:
+                details.append(f"nhóm {category}")
+            suffix = f" ({', '.join(details)})" if details else ""
+            lines.append(f"{index}. {raw.get('name') or item['text']}{suffix}")
+        if len(services) > 10:
+            lines.append(f"Còn {len(services) - 10} dịch vụ khác trong kết quả.")
+        return "\n".join(lines)
+
+    @classmethod
+    def _format_product_detail(cls, item: dict[str, Any]) -> str:
+        raw = item.get("raw_json", {})
+        name = raw.get("name") or "Sản phẩm này"
+        parts = [str(name)]
+        price = cls._format_money(raw.get("price"), raw.get("currency"))
+        if price:
+            parts.append(f"có giá {price}")
+        if raw.get("quantity") is not None:
+            parts.append(f"số lượng hiện có là {raw['quantity']}")
+        if raw.get("category"):
+            parts.append(f"thuộc danh mục {raw['category']}")
+        sentence = ", ".join(parts) + "."
+        if raw.get("description"):
+            sentence += f" {raw['description']}"
+        if raw.get("link"):
+            sentence += f" Link tham khảo: {raw['link']}."
+        return sentence
+
+    @classmethod
+    def _format_service_detail(cls, item: dict[str, Any]) -> str:
+        raw = item.get("raw_json", {})
+        name = raw.get("name") or "Dịch vụ này"
+        parts = [str(name)]
+        if raw.get("duration_minutes") is not None:
+            parts.append(f"thường kéo dài khoảng {raw['duration_minutes']} phút")
+        price = cls._format_money(raw.get("price"), raw.get("currency"))
+        if price:
+            parts.append(f"chi phí là {price}")
+        category = raw.get("source_category") or raw.get("category_code")
+        if category:
+            parts.append(f"thuộc nhóm {category}")
+        sentence = ", ".join(parts) + "."
+        if raw.get("description"):
+            sentence += f" {raw['description']}"
+        return sentence
+
+    @classmethod
+    def _format_product_compare(cls, items: list[dict[str, Any]]) -> str:
+        products = [item for item in items if item["source_type"] == "product"][:4]
+        if len(products) < 2:
+            return (
+                "Tôi chưa tìm thấy đủ hai sản phẩm trong dữ liệu hiện tại để so sánh. "
+                "Bạn vui lòng nêu rõ tên các sản phẩm."
+            )
+        lines = ["Dựa trên dữ liệu hiện có, có thể so sánh nhanh như sau:"]
+        for item in products:
+            raw = item.get("raw_json", {})
+            details = []
+            price = cls._format_money(raw.get("price"), raw.get("currency"))
+            if price:
+                details.append(f"giá {price}")
+            if raw.get("category"):
+                details.append(f"danh mục {raw['category']}")
+            if raw.get("quantity") is not None:
+                details.append(f"còn {raw['quantity']}")
+            name = raw.get("name") or item["source_id"]
+            summary = ", ".join(details) or item["text"]
+            lines.append(f"- {name}: {summary}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_faq(item: dict[str, Any]) -> str:
+        raw = item.get("raw_json", {})
+        answer = str(raw.get("answer") or item["text"])
+        question = raw.get("question")
+        if question:
+            return f"Theo FAQ của phòng khám về “{question}”: {answer}"
+        return answer
+
+    @staticmethod
     def _simple(
         intent: Intent,
         confidence: float,
@@ -385,3 +795,11 @@ class GroundedGenerator:
             answer_type=answer_type,
             result=ResultBody(text=text),
         )
+
+
+def _json_payload(text: str) -> str:
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = re.sub(r"^```(?:json)?\s*", "", stripped, flags=re.IGNORECASE)
+        stripped = re.sub(r"\s*```$", "", stripped)
+    return stripped

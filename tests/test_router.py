@@ -80,6 +80,24 @@ def test_product_list_wording_routes_to_list():
     assert result.intent == Intent.PRODUCT_LIST
 
 
+def test_service_list_filter_wording_routes_to_list():
+    result = IntentRouter().route(
+        "Dịch vụ nào liên quan đến implant?",
+        known_services=["Cấy ghép Implant đơn lẻ", "Tẩy trắng răng tại phòng khám"],
+    )
+
+    assert result.intent == Intent.SERVICE_LIST
+
+
+def test_product_filter_wording_routes_to_list():
+    result = IntentRouter().route(
+        "Sản phẩm nào dưới 2 triệu?",
+        known_products=["Bàn chải điện Oral-B Pro 500"],
+    )
+
+    assert result.intent == Intent.PRODUCT_LIST
+
+
 def test_router_evaluation_uses_known_business_entities():
     metrics = evaluate_router(
         [

@@ -10,6 +10,45 @@ export function formatNumber(value?: number | null, digits = 0): string {
   }).format(value);
 }
 
+export function formatCurrency(
+  value?: number | null,
+  currency = "VND",
+): string {
+  if (value == null) return "—";
+  try {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: currency || "VND",
+      maximumFractionDigits: currency === "VND" ? 0 : 2,
+    }).format(value);
+  } catch {
+    return `${formatNumber(value)} ${currency}`.trim();
+  }
+}
+
+export function formatDuration(minutes?: number | null): string {
+  if (minutes == null) return "—";
+  if (minutes < 60) return `${formatNumber(minutes)} phút`;
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  return remaining
+    ? `${formatNumber(hours)} giờ ${formatNumber(remaining)} phút`
+    : `${formatNumber(hours)} giờ`;
+}
+
+export function formatBoolean(value?: boolean | null): string {
+  if (value == null) return "—";
+  return value ? "Có" : "Không";
+}
+
+export function formatUnknownValue(value: unknown): string {
+  if (value == null || value === "") return "—";
+  if (typeof value === "boolean") return formatBoolean(value);
+  if (Array.isArray(value)) return value.map(formatUnknownValue).join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 export function formatLatency(value?: number | null): string {
   return value == null ? "—" : `${formatNumber(value)} ms`;
 }

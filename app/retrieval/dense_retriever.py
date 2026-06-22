@@ -2,7 +2,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.constants import Intent
-from app.db.models import FAQ, Chunk, Product, Service, TableRow
+from app.db.models import FAQ, Chunk, Document, Product, Service, TableRow
 from app.ingestion.embedder import EmbeddingService
 from app.retrieval.types import RetrievalResult
 
@@ -30,13 +30,11 @@ class DenseRetriever:
         intent: Intent,
     ) -> dict[str, list[RetrievalResult]]:
         vector = self.embedder.embed_query(query)
-        if intent == Intent.FAQ:
-            return {"faq": self._faqs(session, vector)}
         result_sets = {
             "chunk": self._chunks(session, vector),
             "table_row": self._rows(session, vector, intent),
         }
-        if intent == Intent.UNKNOWN:
+        if intent in {Intent.FAQ, Intent.UNKNOWN}:
             result_sets["faq"] = self._faqs(session, vector)
         return result_sets
 
@@ -44,7 +42,9 @@ class DenseRetriever:
         distance = Chunk.embedding.cosine_distance(vector)
         rows = session.execute(
             select(Chunk, distance.label("distance"))
+            .join(Document, Document.doc_id == Chunk.doc_id)
             .where(Chunk.status == "active", Chunk.embedding.is_not(None))
+            .where(Document.status == "active")
             .order_by(distance)
             .limit(self.top_k)
         ).all()
@@ -100,7 +100,12 @@ class DenseRetriever:
                     FAQ.source_row_id == TableRow.row_id,
                 ),
             )
-            .where(TableRow.status == "active", TableRow.embedding.is_not(None))
+            .join(Document, Document.doc_id == TableRow.doc_id)
+            .where(
+                TableRow.status == "active",
+                TableRow.embedding.is_not(None),
+                Document.status == "active",
+            )
             .order_by(distance)
             .limit(self.top_k)
         )
@@ -140,7 +145,12 @@ class DenseRetriever:
         distance = FAQ.embedding.cosine_distance(vector)
         rows = session.execute(
             select(FAQ, distance.label("distance"))
-            .where(FAQ.is_active.is_(True), FAQ.embedding.is_not(None))
+            .outerjoin(Document, Document.doc_id == FAQ.source_doc_id)
+            .where(
+                FAQ.is_active.is_(True),
+                FAQ.embedding.is_not(None),
+                or_(FAQ.source_doc_id.is_(None), Document.status == "active"),
+            )
             .order_by(distance)
             .limit(self.top_k)
         ).all()

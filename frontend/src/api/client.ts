@@ -29,17 +29,19 @@ export class ApiError extends Error {
   }
 }
 
-type RequestOptions = RequestInit & { timeoutMs?: number };
+type RequestOptions = RequestInit & { timeoutMs?: number | null };
 
 export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
   const controller = new AbortController();
-  const timeout = window.setTimeout(
-    () => controller.abort(),
-    options.timeoutMs ?? 30_000,
-  );
+  const timeoutMs =
+    options.timeoutMs === undefined ? 30_000 : options.timeoutMs;
+  const timeout =
+    timeoutMs === null
+      ? undefined
+      : window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
@@ -85,7 +87,9 @@ export async function apiRequest<T>(
       { code: "NETWORK_ERROR", details: error },
     );
   } finally {
-    window.clearTimeout(timeout);
+    if (timeout !== undefined) {
+      window.clearTimeout(timeout);
+    }
   }
 }
 

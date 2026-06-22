@@ -33,6 +33,7 @@ ingestion = [
   "python-docx>=1.1,<2",
 ]
 models = [
+  "gliner>=0.2,<1",
   "sentence-transformers>=3.3,<6",
 ]
 observability = [
@@ -61,4 +62,3 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["B008"]
-

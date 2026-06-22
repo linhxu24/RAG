@@ -152,10 +152,15 @@ class IntentRouter:
         "tat ca",
         "liet ke",
         "xem cac",
+        "san pham nao",
+        "dich vu nao",
         "nhung san pham",
         "nhung dich vu",
         "dang ban",
         "hien co",
+        "lien quan den",
+        "phu hop voi",
+        "thuoc loai",
     )
     PRODUCT_WORDS = (
         "san pham",
@@ -251,6 +256,23 @@ class IntentRouter:
             word in normalized
             for word in ("thap den cao", "cao den thap", "tang dan", "giam dan", "loc")
         )
+        has_filter_or_sort = any(
+            word in normalized
+            for word in (
+                "duoi",
+                "tren",
+                "toi da",
+                "toi thieu",
+                "khong qua",
+                "nho hon",
+                "re nhat",
+                "dat nhat",
+                "ngan nhat",
+                "lau nhat",
+                "sap xep",
+                "thu tu",
+            )
+        )
         is_faq = any(word in normalized for word in self.FAQ_WORDS)
         is_post_treatment = any(
             phrase in normalized
@@ -292,9 +314,9 @@ class IntentRouter:
             )
         if is_faq and not asks_structured_detail:
             return RouterResult(Intent.FAQ, 0.84, needs_rag=True)
-        if has_product and is_list:
+        if has_product and (is_list or (has_filter_or_sort and not product_entities)):
             return RouterResult(Intent.PRODUCT_LIST, 0.97)
-        if has_service and is_list:
+        if has_service and (is_list or (has_filter_or_sort and not service_entities)):
             return RouterResult(Intent.SERVICE_LIST, 0.97)
         if has_product:
             return RouterResult(
@@ -322,7 +344,7 @@ class IntentRouter:
         self,
         query: str,
         settings: Settings,
-        ollama_client,
+        llm_client,
         *,
         known_products: list[str] | None = None,
         known_services: list[str] | None = None,
@@ -358,12 +380,14 @@ class IntentRouter:
         attempts: list[dict[str, Any]] = []
         validation_meta: dict[str, Any] = {"retried": False}
         try:
-            response = await ollama_client.generate(
+            response = await llm_client.generate(
                 prompt=prompt,
-                model=settings.ollama_router_model,
+                model=settings.llm_router_model,
                 system=ROUTER_SYSTEM_PROMPT,
                 json_mode=True,
-                timeout_seconds=0,
+                timeout_seconds=settings.llm_router_timeout_seconds,
+                num_predict=settings.llm_router_num_predict,
+                num_ctx=settings.llm_router_num_ctx,
                 think=False,
             )
             raw_outputs.append(response.text)
@@ -375,12 +399,14 @@ class IntentRouter:
                     "retried": True,
                     "first_error": str(parse_exc),
                 }
-                fix_response = await ollama_client.generate(
+                fix_response = await llm_client.generate(
                     prompt=self._json_fix_prompt(response.text, str(parse_exc)),
-                    model=settings.ollama_router_model,
+                    model=settings.llm_router_model,
                     system=ROUTER_SYSTEM_PROMPT,
                     json_mode=True,
-                    timeout_seconds=0,
+                    timeout_seconds=settings.llm_router_timeout_seconds,
+                    num_predict=settings.llm_router_num_predict,
+                    num_ctx=settings.llm_router_num_ctx,
                     think=False,
                 )
                 raw_outputs.append(fix_response.text)
@@ -405,7 +431,7 @@ class IntentRouter:
                     payload.needs_clarification or payload.confidence < 0.65
                 ),
                 clarification_message=payload.clarification_question,
-                source="ollama",
+                source=settings.llm_provider.lower().strip(),
                 llm_attempted=True,
                 llm_latency_ms=llm_latency_ms,
                 question_type=payload.question_type,
@@ -570,11 +596,28 @@ class IntentRouter:
             word in normalized
             for word in ("thap den cao", "cao den thap", "tang dan", "giam dan", "loc")
         )
+        has_filter_or_sort = any(
+            word in normalized
+            for word in (
+                "duoi",
+                "tren",
+                "toi da",
+                "toi thieu",
+                "khong qua",
+                "nho hon",
+                "re nhat",
+                "dat nhat",
+                "ngan nhat",
+                "lau nhat",
+                "sap xep",
+                "thu tu",
+            )
+        )
         has_product_word = any(word in normalized for word in self.PRODUCT_WORDS)
         has_service_word = any(word in normalized for word in self.SERVICE_WORDS)
-        if is_list and has_product_word:
+        if (is_list or has_filter_or_sort) and has_product_word:
             return RouterResult(Intent.PRODUCT_LIST, 0.78)
-        if is_list and has_service_word:
+        if (is_list or has_filter_or_sort) and has_service_word:
             return RouterResult(Intent.SERVICE_LIST, 0.78)
 
         if self._looks_like_faq(normalized, padded):

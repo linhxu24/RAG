@@ -71,6 +71,8 @@ export interface ChatDebugInfo {
 export interface ChatResponse {
   trace_id: string;
   intent?: string;
+  answer_type?: string;
+  degraded?: boolean;
   answer?: ChatAnswer;
   message?: ChatAnswer;
   debug?: ChatDebugInfo;
@@ -183,6 +185,11 @@ export interface EvaluationSummary {
   fallback_rate?: number | null;
   no_result_rate?: number | null;
   clarification_rate?: number | null;
+  entity_binding_accuracy?: number | null;
+  follow_up_success_rate?: number | null;
+  multi_task_success_rate?: number | null;
+  entity_span_degraded_rate?: number | null;
+  scenario_pass_rate?: number | null;
   latest_run_id?: string | null;
   coverage?: Record<string, number>;
   per_intent?: Record<string, {
@@ -195,6 +202,30 @@ export interface EvaluationSummary {
   diagnostics?: EvaluationDiagnostics;
   history: Array<Record<string, any>>;
   confusion_matrix?: Record<string, Record<string, number>>;
+  conversation?: ConversationEvaluationMetrics;
+}
+
+export interface ConversationScenarioMetric {
+  scenario_key: string;
+  scenario_title?: string | null;
+  turn_count: number;
+  passed_turns: number;
+  passed: boolean;
+  follow_up_success_rate?: number | null;
+}
+
+export interface ConversationEvaluationMetrics {
+  entity_binding_case_count?: number;
+  entity_binding_accuracy?: number | null;
+  follow_up_case_count?: number;
+  follow_up_success_rate?: number | null;
+  multi_task_case_count?: number;
+  multi_task_success_rate?: number | null;
+  entity_span_provider_counts?: Record<string, number>;
+  entity_span_degraded_rate?: number | null;
+  scenario_count?: number;
+  scenario_pass_rate?: number | null;
+  scenarios?: ConversationScenarioMetric[];
 }
 
 export interface EvaluationRun {

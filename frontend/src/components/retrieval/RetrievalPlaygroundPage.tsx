@@ -147,7 +147,7 @@ function RetrievalTab({
 }) {
   if (active === "Router") {
     return (
-      <div className="grid grid-cols-[340px_1fr] gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]">
         <div className="panel p-5">
           <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Detected intent
@@ -227,7 +227,7 @@ function ResultList({ items }: { items: RetrievalItem[] }) {
               </div>
             </div>
           </summary>
-          <div className="grid grid-cols-2 gap-3 border-t border-slate-100 bg-slate-50 p-4">
+          <div className="grid grid-cols-1 gap-3 border-t border-slate-100 bg-slate-50 p-4 lg:grid-cols-2">
             <JsonViewer value={item.source || {}} maxHeight="260px" />
             <JsonViewer value={item.metadata || {}} maxHeight="260px" />
           </div>

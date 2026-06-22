@@ -28,13 +28,26 @@ export const listEvaluationResults = (evalRunId?: string | null) =>
   );
 export const listEvaluationDatasets = () =>
   apiRequest<ApiList<EvaluationDataset>>("/api/evaluation/datasets");
-export const runEvaluation = (
-  mode: "router" | "e2e" | "all",
-  dataVersion: string,
-  profile: "deterministic" | "production",
-) =>
+
+export interface RunEvaluationOptions {
+  mode: "router" | "e2e" | "all";
+  dataVersion: string;
+  profile: "deterministic" | "production";
+  datasetPath?: string;
+  datasetName?: string;
+  datasetVersion?: string;
+}
+
+export const runEvaluation = (options: RunEvaluationOptions) =>
   apiRequest("/evaluation/run", {
     method: "POST",
-    timeoutMs: profile === "production" ? 1_800_000 : 300_000,
-    body: JSON.stringify({ mode, data_version: dataVersion, profile }),
+    timeoutMs: options.profile === "production" ? 1_800_000 : 300_000,
+    body: JSON.stringify({
+      mode: options.mode,
+      data_version: options.dataVersion,
+      profile: options.profile,
+      dataset_path: options.datasetPath || null,
+      dataset_name: options.datasetName || "dental_basic_eval",
+      dataset_version: options.datasetVersion || "2.0",
+    }),
   });

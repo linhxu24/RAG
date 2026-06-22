@@ -24,27 +24,47 @@ export function AssetManagerPage() {
       key: "preview",
       label: "preview",
       render: (row) => <AssetThumb asset={row} />,
+      sortable: false,
     },
     {
       key: "id",
       label: "asset_id",
       render: (row) => <span className="mono text-[10px]">{truncate(row.asset_id, 18)}</span>,
+      sortValue: (row) => row.asset_id,
+      searchValue: (row) => row.asset_id,
     },
     {
       key: "token",
       label: "asset_token",
       render: (row) => <span className="mono text-[10px]">{row.asset_token || "—"}</span>,
+      sortValue: (row) => row.asset_token,
+      searchValue: (row) => row.asset_token,
     },
-    { key: "type", label: "type", render: (row) => row.asset_type || "—" },
+    {
+      key: "type",
+      label: "type",
+      render: (row) => row.asset_type || "—",
+      sortValue: (row) => row.asset_type,
+      searchValue: (row) => row.asset_type,
+    },
     {
       key: "doc",
       label: "doc_id",
       render: (row) => <span className="mono text-[10px]">{truncate(row.doc_id, 16)}</span>,
+      sortValue: (row) => row.doc_id,
+      searchValue: (row) => row.doc_id,
     },
-    { key: "status", label: "status", render: (row) => <StatusBadge status={row.status} /> },
+    {
+      key: "status",
+      label: "status",
+      render: (row) => <StatusBadge status={row.status} />,
+      sortValue: (row) => row.status,
+      searchValue: (row) => row.status,
+    },
     {
       key: "action",
       label: "action",
+      sortable: false,
       render: (row) => (
         <button
           className="secondary-button p-2"
@@ -71,6 +91,7 @@ export function AssetManagerPage() {
           columns={columns}
           rowKey={(row) => row.asset_id}
           emptyTitle="Chưa có asset"
+          defaultSort={{ key: "id", direction: "desc" }}
         />
       )}
       {selected && (
@@ -91,7 +112,7 @@ export function AssetManagerPage() {
               ) : detail.isError ? (
                 <ErrorState error={detail.error} />
               ) : detail.data ? (
-                <div className="grid grid-cols-[minmax(0,1fr)_1fr] gap-5">
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_1fr]">
                   <div className="panel overflow-hidden">
                     <AssetPreview asset={detail.data} />
                   </div>

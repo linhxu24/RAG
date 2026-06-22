@@ -30,7 +30,7 @@ from app.db.models import (
 )
 from app.db.session import check_database, get_db
 from app.evaluation.diagnostics import build_diagnostics
-from app.generation.ollama_client import OllamaClient
+from app.generation.llm_client import build_llm_client
 from app.ingestion.embedder import EmbeddingService
 from app.ingestion.pipeline import IngestionOptions, IngestionPipeline
 from app.ingestion.review import (
@@ -342,7 +342,7 @@ async def retrieval_debug(
     routed = await IntentRouter().route_with_optional_llm(
         request.query,
         effective,
-        OllamaClient(effective),
+        build_llm_client(effective),
         known_products=product_names,
         known_services=service_names,
     )
@@ -354,7 +354,7 @@ async def retrieval_debug(
     entities = resolution.names or routed.entities
 
     rewrite = await QueryRewriter().rewrite(
-        request.query, routed.intent, effective, OllamaClient(effective)
+        request.query, routed.intent, effective, build_llm_client(effective)
     )
     structured = (
         structured_retriever.retrieve(session, routed.intent, request.query, entities)
@@ -587,6 +587,7 @@ def evaluation_summary(session: Session = Depends(get_db)) -> dict[str, Any]:
     retrieval = metrics.get("retrieval", {})
     generation = metrics.get("generation", {})
     assets = metrics.get("assets", {})
+    conversation = metrics.get("conversation", {})
     return {
         "e2e_success_rate": e2e.get("success_rate"),
         "router_accuracy": router_metrics.get("accuracy"),
@@ -609,6 +610,14 @@ def evaluation_summary(session: Session = Depends(get_db)) -> dict[str, Any]:
         "p99_latency_ms": e2e.get("p99_latency_ms"),
         "fallback_rate": e2e.get("fallback_rate"),
         "clarification_rate": e2e.get("clarification_rate"),
+        "entity_binding_accuracy": conversation.get("entity_binding_accuracy"),
+        "follow_up_success_rate": conversation.get("follow_up_success_rate"),
+        "multi_task_success_rate": conversation.get("multi_task_success_rate"),
+        "entity_span_degraded_rate": conversation.get(
+            "entity_span_degraded_rate"
+        ),
+        "scenario_pass_rate": conversation.get("scenario_pass_rate"),
+        "conversation": conversation,
         "latest_run_id": str(latest.eval_run_id) if latest else None,
         "coverage": metrics.get("coverage", {}),
         "per_intent": metrics.get("per_intent", {}),
@@ -691,6 +700,7 @@ def metrics(session: Session = Depends(get_db)) -> dict[str, Any]:
     return {
         "total_requests": total,
         "success_rate": sum(item.status == "success" for item in traces) / total if total else 0,
+        "degraded_rate": sum(item.status == "degraded" for item in traces) / total if total else 0,
         "error_rate": sum(item.status == "failed" for item in traces) / total if total else 0,
         "average_latency_ms": sum(latencies) / len(latencies) if latencies else 0,
         "p50_latency_ms": percentile(latencies, 0.5),
@@ -704,7 +714,8 @@ def metrics(session: Session = Depends(get_db)) -> dict[str, Any]:
         if total
         else 0,
         "fallback_rate": sum(
-            answer.get("answer_type") == "fallback" for answer in answers
+            answer.get("answer_type") == "fallback" or answer.get("degraded") is True
+            for answer in answers
         )
         / total
         if total
@@ -1057,8 +1068,9 @@ def chunks(session: Session = Depends(get_db)) -> dict[str, Any]:
 def settings_payload(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
     return {
         "api_environment": settings.app_env,
-        "router_model": settings.ollama_router_model,
-        "generation_model": settings.ollama_generation_model,
+        "llm_provider": settings.llm_provider,
+        "router_model": settings.llm_router_model,
+        "generation_model": settings.llm_generation_model,
         "embedding_model": settings.embedding_model,
         "reranker_model": settings.reranker_model,
         "top_k_dense": settings.dense_top_k,

@@ -1,5 +1,5 @@
 from app.assets.resolver import AssetResolver
-from app.generation.schemas import ChatResponse, GeneratedResponse
+from app.generation.schemas import ChatResponse, ChatSuggestion, GeneratedResponse
 
 
 class ResponseRenderer:
@@ -12,10 +12,21 @@ class ResponseRenderer:
             for item in response.result.items
             for asset_id in item.asset_ids
         ]
+        doc_ids = list(
+            dict.fromkeys(
+                str(doc_id)
+                for doc_id in [
+                    *(item.doc_id for item in response.result.items),
+                    *(source.doc_id for source in response.result.sources),
+                ]
+                if doc_id
+            )
+        )
         resolution = self.asset_resolver.resolve(
             session,
             response.result.text,
             asset_ids=asset_ids,
+            doc_ids=doc_ids,
         )
         response.result.assets = resolution.assets
         response.result.missing_assets = resolution.missing_assets
@@ -26,6 +37,7 @@ class ResponseRenderer:
         trace_id: str,
         response: GeneratedResponse,
         *,
+        suggestions: list[ChatSuggestion] | None = None,
         debug: bool = False,
         debug_data: dict | None = None,
     ) -> ChatResponse:
@@ -36,5 +48,6 @@ class ResponseRenderer:
             answer=response.result,
             safety=response.safety,
             degraded=response.degraded,
-            debug={"enabled": debug, **(debug_data or {})} if debug else {"enabled": False},
+            suggestions=suggestions or [],
+            debug=dict(debug_data or {}) if debug else None,
         )

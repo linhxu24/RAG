@@ -9,6 +9,20 @@ def init_database() -> None:
     with engine.begin() as connection:
         connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+        connection.execute(
+            text(
+                """
+                CREATE OR REPLACE FUNCTION simplydent_unaccent(value text)
+                RETURNS text
+                LANGUAGE sql
+                IMMUTABLE
+                PARALLEL SAFE
+                RETURNS NULL ON NULL INPUT
+                AS $$ SELECT public.unaccent(value) $$
+                """
+            )
+        )
     Base.metadata.create_all(engine)
 
 

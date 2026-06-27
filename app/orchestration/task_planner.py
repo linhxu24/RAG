@@ -136,29 +136,19 @@ class TaskPlanner:
                         source=settings.llm_provider.lower().strip(),
                         metadata=metadata,
                     )
-                return self._heuristic_plan(
+                return self._safe_unknown_plan(
                     query=query,
-                    history=history,
-                    settings=settings,
-                    known_products=known_products,
-                    known_services=known_services,
-                    known_product_categories=known_product_categories,
                     metadata={
                         **metadata,
-                        "planner_fallback": "heuristic_after_empty_llm_plan",
+                        "planner_fallback": "safe_unknown_after_empty_llm_plan",
                     },
                 )
             except Exception as exc:
-                return self._heuristic_plan(
+                return self._safe_unknown_plan(
                     query=query,
-                    history=history,
-                    settings=settings,
-                    known_products=known_products,
-                    known_services=known_services,
-                    known_product_categories=known_product_categories,
                     metadata={
                         "llm_error": str(exc),
-                        "planner_fallback": "heuristic_after_llm_error",
+                        "planner_fallback": "safe_unknown_after_llm_error",
                     },
                 )
         return self._heuristic_plan(
@@ -231,6 +221,31 @@ class TaskPlanner:
                 )
             ),
             source="heuristic",
+            metadata=metadata or {},
+        )
+
+    @staticmethod
+    def _safe_unknown_plan(
+        *,
+        query: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> TaskPlan:
+        task = PlannedTask(
+            task_id="t1",
+            intent=Intent.UNKNOWN,
+            planner_query=query,
+            priority=1,
+            planner_needs_clarification=True,
+            planner_clarification_question=(
+                "Bạn có thể nói rõ hơn bạn muốn hỏi về sản phẩm, dịch vụ, "
+                "FAQ hay thông tin phòng khám không?"
+            ),
+        )
+        return TaskPlan(
+            tasks=(TaskPlanner._normalize_task_proposal(task, priority=1),),
+            planner_global_entities=(),
+            clarification_question=task.planner_clarification_question,
+            source="safe_unknown",
             metadata=metadata or {},
         )
 

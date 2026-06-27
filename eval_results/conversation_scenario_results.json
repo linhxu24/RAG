@@ -1,0 +1,1387 @@
+{
+  "run_id": "20260626160237",
+  "backend_url": "http://localhost:8000",
+  "summary": {
+    "total_scenarios": 10,
+    "scenarios_passed": 1,
+    "scenarios_failed": 9,
+    "total_turns": 42,
+    "turns_passed": 24,
+    "turns_failed": 18,
+    "intent_accuracy": 0.8095,
+    "entity_accuracy": 0.4583,
+    "follow_up_accuracy": 0.2667,
+    "multi_task_accuracy": 0.0,
+    "degraded_rate": 0.119,
+    "avg_latency_ms": 132461,
+    "p95_latency_ms": 258057
+  },
+  "scenarios": [
+    {
+      "scenario_key": "clinic_basic_consultation",
+      "title": "Khách hỏi thông tin phòng khám",
+      "passed": false,
+      "scenario_pass_rate": 0.6,
+      "follow_up_accuracy": null,
+      "multi_task_accuracy": null,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Xin chào",
+          "expected_intent": "GREETING",
+          "actual_intent": "GREETING",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 152898,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Xin chào! Chúng tôi rất vui được phục vụ bạn.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 1,
+          "query": "Phòng khám ở đâu vậy?",
+          "expected_intent": "CLINIC_INFO",
+          "actual_intent": "CLINIC_INFO",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 74709,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Phòng khám của chúng tôi tọa lạc tại TP.HCM.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 2,
+          "query": "Hôm nay mở cửa tới mấy giờ?",
+          "expected_intent": "CLINIC_INFO",
+          "actual_intent": "CLINIC_INFO",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 138965,
+          "http_status": 200,
+          "degraded": true,
+          "answer_text": "Giờ làm việc - Chiều: 13:00 - 17:00\nGiờ làm việc - Sáng: 8:00 - 12:00\n\nĐây là câu trả lời dự phòng từ dữ liệu đã truy xuất vì bước diễn đạt tự nhiên không hoàn tất.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "fail",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "not_degraded: response.degraded is True"
+          ]
+        },
+        {
+          "turn_index": 3,
+          "query": "Cho tôi xin số điện thoại để đặt lịch",
+          "expected_intent": "CLINIC_INFO",
+          "actual_intent": "CLINIC_INFO",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 122172,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Số điện thoại của phòng khám là 0909123456. Bạn có thể gọi đến số này để đặt lịch hẹn.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 4,
+          "query": "Cảm ơn bạn",
+          "expected_intent": "CHITCHAT",
+          "actual_intent": "GREETING",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 113002,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Rất vui được giúp đỡ bạn!",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "intent_match: expected CHITCHAT, got GREETING"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario_key": "whitening_service_follow_up",
+      "title": "Tẩy trắng răng nhiều lượt",
+      "passed": false,
+      "scenario_pass_rate": 0.5,
+      "follow_up_accuracy": 0.3333,
+      "multi_task_accuracy": null,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Dịch vụ tẩy trắng răng tại phòng khám giá bao nhiêu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 132537,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Dịch vụ tẩy trắng răng tại phòng khám của chúng tôi có giá là 2.500.000 VND. Dịch vụ này giúp làm sáng màu răng bằng vật liệu chuyên dụng trong điều kiện kiểm soát tại phòng khám, với thời lượng khoảng 90 phút.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 1,
+          "query": "Mất bao lâu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 134301,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Quy trình tẩy trắng răng tại phòng khám của chúng tôi mất khoảng 90 phút. Trong quá trình này, màu sắc răng sẽ được cải thiện dựa trên cơ địa và thói quen ăn uống cá nhân.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "pass",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 2,
+          "query": "Có đau không?",
+          "expected_intent": "FAQ",
+          "actual_intent": "FAQ",
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 167571,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Một số người có thể ê buốt nhẹ sau tẩy trắng răng trong thời gian ngắn. Bạn nên tránh đồ quá nóng, quá lạnh và dùng sản phẩm chăm sóc theo hướng dẫn. Nếu ê buốt nhiều hoặc kéo dài, hãy liên hệ phòng khám để được kiểm tra.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "entity_present: missing ['Tẩy trắng răng tại phòng khám']",
+            "follow_up_memory_used: expected prior entity in response without re-mention."
+          ]
+        },
+        {
+          "turn_index": 3,
+          "query": "Sau khi làm có cần kiêng gì không?",
+          "expected_intent": "FAQ",
+          "actual_intent": "FAQ",
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 229605,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Sau khi tẩy trắng răng, một số người có thể gặp tình trạng ê buốt nhẹ trong thời gian ngắn. Để giảm cảm giác này, bạn nên tránh thức ăn và đồ uống quá nóng hoặc lạnh, cũng như tuân theo hướng dẫn chăm sóc răng từ nha sĩ. Nếu ê buốt kéo dài hoặc nghiêm trọng, hãy liên hệ phòng khám để được tư vấn thêm.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "entity_present: missing ['Tẩy trắng răng tại phòng khám']",
+            "follow_up_memory_used: expected prior entity in response without re-mention."
+          ]
+        }
+      ]
+    },
+    {
+      "scenario_key": "aquajet_product_follow_up",
+      "title": "Sản phẩm AquaJet và follow-up",
+      "passed": false,
+      "scenario_pass_rate": 0.0,
+      "follow_up_accuracy": 0.0,
+      "multi_task_accuracy": 0.0,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Cho tôi thông tin AquaJet Mini Water Flosser",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": null,
+          "expected_entities": [
+            "AquaJet Mini Water Flosser"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 44266,
+          "http_status": 500,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "http_error: HTTP 500"
+          ],
+          "error_type": "http_error",
+          "error_message": "HTTP 500",
+          "timeout": false
+        },
+        {
+          "turn_index": 1,
+          "query": "Còn hàng không?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": "PRODUCT_DETAIL",
+          "expected_entities": [
+            "AquaJet Mini Water Flosser"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 12045,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Bạn đang hỏi sản phẩm nào? Vui lòng cho tôi tên cụ thể.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "entity_present: missing ['AquaJet Mini Water Flosser']",
+            "follow_up_memory_used: expected prior entity in response without re-mention."
+          ]
+        },
+        {
+          "turn_index": 2,
+          "query": "Giá bao nhiêu?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": "PRODUCT_DETAIL",
+          "expected_entities": [
+            "AquaJet Mini Water Flosser"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 20704,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Bạn đang hỏi sản phẩm nào? Vui lòng cho tôi tên cụ thể.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "entity_present: missing ['AquaJet Mini Water Flosser']",
+            "follow_up_memory_used: expected prior entity in response without re-mention."
+          ]
+        },
+        {
+          "turn_index": 3,
+          "query": "So sánh nó với SilkLine Waxed Dental Floss",
+          "expected_intent": "PRODUCT_COMPARE",
+          "actual_intent": null,
+          "expected_entities": [
+            "AquaJet Mini Water Flosser",
+            "SilkLine Waxed Dental Floss"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 41506,
+          "http_status": 500,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "http_error: HTTP 500"
+          ],
+          "error_type": "http_error",
+          "error_message": "HTTP 500",
+          "timeout": false
+        }
+      ]
+    },
+    {
+      "scenario_key": "implant_service_filter_and_safety",
+      "title": "Dịch vụ implant theo nhu cầu",
+      "passed": false,
+      "scenario_pass_rate": 0.75,
+      "follow_up_accuracy": 1.0,
+      "multi_task_accuracy": null,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Phòng khám có dịch vụ nào liên quan đến implant?",
+          "expected_intent": "SERVICE_LIST",
+          "actual_intent": "SERVICE_LIST",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 124772,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Phòng khám của chúng tôi cung cấp dịch vụ Cấy ghép Implant đơn lẻ. Dịch vụ này thay thế một răng mất bằng trụ Implant và phục hình phía trên sau khi đủ điều kiện. Trước khi thực hiện, bạn cần trải qua thăm khám, chụp phim và đánh giá sức khỏe răng miệng. Thời gian cho mỗi ca là 120 phút với chi phí là 18 triệu VND.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 1,
+          "query": "Dịch vụ cấy ghép Implant đơn lẻ mất bao lâu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Cấy ghép Implant đơn lẻ"
+          ],
+          "found_entities": [
+            "Cấy ghép Implant đơn lẻ"
+          ],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 127316,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Dịch vụ cấy ghép Implant đơn lẻ mất khoảng 120 phút để thực hiện. Trước khi tiến hành cấy ghép, bạn cần thăm khám và chụp phim để đánh giá sức khỏe răng miệng.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 2,
+          "query": "Chi phí khoảng bao nhiêu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Cấy ghép Implant đơn lẻ"
+          ],
+          "found_entities": [
+            "Cấy ghép Implant đơn lẻ"
+          ],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 122758,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Chi phí cho dịch vụ cấy ghép Implant đơn lẻ là 18.000.000 VND.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "pass",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 3,
+          "query": "Làm implant có đau không?",
+          "expected_intent": "FAQ",
+          "actual_intent": "UNKNOWN",
+          "expected_entities": [
+            "Cấy ghép Implant đơn lẻ"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 9699,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Bạn vui lòng cho biết cụ thể muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin phòng khám.",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "intent_match: expected FAQ, got UNKNOWN",
+            "entity_present: missing ['Cấy ghép Implant đơn lẻ']"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario_key": "wisdom_tooth_care",
+      "title": "Nhổ răng khôn và chăm sóc sau điều trị",
+      "passed": false,
+      "scenario_pass_rate": 0.5,
+      "follow_up_accuracy": 0.0,
+      "multi_task_accuracy": null,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Chi phí nhổ răng khôn là bao nhiêu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Nhổ răng khôn"
+          ],
+          "found_entities": [
+            "Nhổ răng khôn"
+          ],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 108526,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Chi phí nhổ răng khôn tại phòng khám của chúng tôi là 2.500.000 VND.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 1,
+          "query": "Có đau không?",
+          "expected_intent": "FAQ",
+          "actual_intent": "FAQ",
+          "expected_entities": [
+            "Nhổ răng khôn"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 58729,
+          "http_status": 200,
+          "degraded": true,
+          "answer_text": "Theo FAQ của phòng khám về “Tôi bị đau răng dữ dội vào ban đêm thì nên làm gì?”: Đau răng dữ dội có thể xuất phát từ nhiều nguyên nhân và không nên tự kết luận tại nhà. Bạn có thể súc miệng nhẹ bằng nước sạch, tránh nhai bên đau và liên hệ nha sĩ càng sớm càng tốt. Nếu đau kèm sưng mặt, sốt hoặc khó thở, hãy đến cơ sở y tế ngay.\n\nĐây là câu trả lời dự phòng từ dữ liệu đã truy xuất vì bước diễn đạt tự nhiên không hoàn tất.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "fail",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "entity_present: missing ['Nhổ răng khôn']",
+            "follow_up_memory_used: expected prior entity in response without re-mention.",
+            "not_degraded: response.degraded is True"
+          ]
+        },
+        {
+          "turn_index": 2,
+          "query": "Sau khi nhổ cần kiêng gì?",
+          "expected_intent": "FAQ",
+          "actual_intent": "FAQ",
+          "expected_entities": [
+            "Nhổ răng khôn"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 221395,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Sau khi nhổ răng, bạn nên kiêng ăn thức ăn quá cứng và nóng. Tránh dùng ống hút, súc miệng mạnh hoặc làm bất cứ điều gì có thể gây chảy máu trở lại trong ngày đầu tiên. Nếu vẫn thấy rỉ máu nhẹ, hãy cắn gạc theo hướng dẫn của nha sĩ và tiếp tục thấm gạc nếu cần thiết. Nếu gặp tình trạng đau tăng, sưng nhiều hoặc chảy máu kéo dài, bạn nên liên hệ phòng khám ngay.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "fail",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "entity_present: missing ['Nhổ răng khôn']"
+          ]
+        },
+        {
+          "turn_index": 3,
+          "query": "Nếu bị sưng mặt thì xử lý sao?",
+          "expected_intent": "FAQ",
+          "actual_intent": "FAQ",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 258057,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Sưng mặt đi kèm đau răng là dấu hiệu cần được nha sĩ đánh giá sớm. Bạn không nên tự chườm nóng hoặc tự dùng thuốc khi chưa có hướng dẫn của bác sĩ. Nếu sưng lan nhanh, sốt, khó nuốt hoặc khó thở, hãy đến cơ sở y tế khẩn cấp ngay lập tức.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        }
+      ]
+    },
+    {
+      "scenario_key": "product_list_filter_sort",
+      "title": "Danh sách sản phẩm, filter và sort",
+      "passed": true,
+      "scenario_pass_rate": 1.0,
+      "follow_up_accuracy": null,
+      "multi_task_accuracy": null,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Cho tôi danh sách sản phẩm đang có",
+          "expected_intent": "PRODUCT_LIST",
+          "actual_intent": "PRODUCT_LIST",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 497078,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Dưới đây là danh sách sản phẩm đang có tại phòng khám của chúng tôi:\n\n1. **Bàn chải điện OralWave Pro S2** - Giá: 1.350.000 VND, Số lượng: 12\n2. **Bàn chải điện SonicCare Lite E1** - Giá: 890.000 VND, Số lượng: 18\n3. **Bàn chải kẽ răng GapCare Angle Interdental Brush** - Giá: 85.000 VND, Số lượng: 60\n4. **Bàn chải kẽ răng InterClean Size 0 Interdental Brush** - Giá: 65.000 VND, Số lượng: 80\n5. **Bàn chải thường CleanSmile Soft 300 Manual Toothbrush** - Giá: 45.000 VND, Số lượng: 120\n6. **Bàn chải thường PureDent Compact Soft Brush** - Giá: 39.000 VND, Số lượng: 95\n7. **Sáp nha khoa BraceCare Orthodontic Wax** - Giá: 55.000 VND, Số lượng: 140\n8. **Bộ chăm sóc chỉnh nha OrthoClean Travel Kit** - Giá: 210.000 VND, Số lượng: 40\n9. **Tăm chỉ nha khoa EasyFloss Picks Mint** - Giá: 68.000 VND, Số lượng: 100\n10. **Chỉ nha khoa SilkLine Waxed Dental Floss** - Giá: 59.000 VND, Số lượng: 130",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 1,
+          "query": "Có sản phẩm nào dưới 500k không?",
+          "expected_intent": "PRODUCT_LIST",
+          "actual_intent": "PRODUCT_LIST",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 277307,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Các sản phẩm nha khoa tại phòng khám của chúng tôi có nhiều mức giá khác nhau. Vui lòng cho biết cụ thể bạn quan tâm đến sản phẩm nào để tôi có thể cung cấp thông tin chính xác hơn.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 2,
+          "query": "Sắp xếp theo giá tăng dần",
+          "expected_intent": "PRODUCT_LIST",
+          "actual_intent": "PRODUCT_LIST",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 252122,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Dưới đây là danh sách sản phẩm sắp xếp theo giá tăng dần:\n1. PureDent Compact Soft Brush - Giá: 39000 VND\n2. CleanSmile Soft 300 Manual Toothbrush - Giá: 45000 VND\n3. BraceCare Orthodontic Wax - Giá: 55000 VND\n4. SilkLine Waxed Dental Floss - Giá: 59000 VND\n5. InterClean Size 0 Interdental Brush - Giá: 65000 VND\n6. EasyFloss Picks Mint - Giá: 68000 VND\n7. FluoriDent Fresh Mint Toothpaste - Giá: 72000 VND\n8. GapCare Angle Interdental Brush - Giá: 85000 VND\n9. MediRinse Alcohol Free Mouthwash - Giá: 88000 VND\n10. GentleWhite Daily Toothpaste - Giá: 95000 VND",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 3,
+          "query": "Trong số đó loại nào còn hàng?",
+          "expected_intent": "PRODUCT_LIST",
+          "actual_intent": "PRODUCT_LIST",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 252776,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Dưới đây là một số sản phẩm còn hàng tại phòng khám của chúng tôi:\n1. GapCare Angle Interdental Brush - Số lượng: 60\n2. InterClean Size 0 Interdental Brush - Số lượng: 80\n3. CleanSmile Soft 300 Manual Toothbrush - Số lượng: 120\n4. PureDent Compact Soft Brush - Số lượng: 95\n5. BraceCare Orthodontic Wax - Số lượng: 140\n6. OrthoClean Travel Kit - Số lượng: 40\n7. EasyFloss Picks Mint - Số lượng: 100\n8. SilkLine Waxed Dental Floss - Số lượng: 130\n9. FreshTongue Copper Cleaner - Số lượng: 45\n10. FluoriDent Fresh Mint Toothpaste - Số lượng: 150",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        }
+      ]
+    },
+    {
+      "scenario_key": "toothpaste_compare_follow_up",
+      "title": "So sánh kem đánh răng và hỏi tiếp",
+      "passed": false,
+      "scenario_pass_rate": 0.75,
+      "follow_up_accuracy": 0.5,
+      "multi_task_accuracy": null,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "So sánh FluoriDent Fresh Mint Toothpaste và SensitiveCare Mild Toothpaste",
+          "expected_intent": "PRODUCT_COMPARE",
+          "actual_intent": "PRODUCT_COMPARE",
+          "expected_entities": [
+            "FluoriDent Fresh Mint Toothpaste",
+            "SensitiveCare Mild Toothpaste"
+          ],
+          "found_entities": [
+            "FluoriDent Fresh Mint Toothpaste",
+            "SensitiveCare Mild Toothpaste"
+          ],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 125299,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "FluoriDent Fresh Mint Toothpaste là kem đánh răng hương bạc hà hỗ trợ làm sạch mảng bám hàng ngày với công thức fluoride phù hợp cho chăm sóc răng miệng thường xuyên. Giá của sản phẩm này là 72,000 VND và số lượng có sẵn là 150.\nSensitiveCare Mild Toothpaste là kem đánh răng dành cho người hay ê buốt nhẹ khi ăn uống lạnh. Sản phẩm khuyên dùng đều đặn và nên tham khảo ý kiến nha sĩ nếu tình trạng kéo dài. Giá của SensitiveCare Mild Toothpaste là 110,000 VND với số lượng có sẵn là 75.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 1,
+          "query": "Loại nào phù hợp răng nhạy cảm hơn?",
+          "expected_intent": "FAQ",
+          "actual_intent": "PRODUCT_DETAIL",
+          "expected_entities": [
+            "FluoriDent Fresh Mint Toothpaste",
+            "SensitiveCare Mild Toothpaste"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 47950,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Tôi chưa xác định được chính xác sản phẩm. Bạn vui lòng nhập tên cụ thể hơn.",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "intent_match: expected FAQ, got PRODUCT_DETAIL",
+            "entity_present: missing ['FluoriDent Fresh Mint Toothpaste', 'SensitiveCare Mild Toothpaste']",
+            "follow_up_memory_used: expected prior entity in response without re-mention."
+          ]
+        },
+        {
+          "turn_index": 2,
+          "query": "SensitiveCare giá bao nhiêu?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": "PRODUCT_DETAIL",
+          "expected_entities": [
+            "SensitiveCare Mild Toothpaste"
+          ],
+          "found_entities": [
+            "SensitiveCare Mild Toothpaste"
+          ],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 65306,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "SensitiveCare Mild Toothpaste có giá là 110.000 VND.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 3,
+          "query": "Còn hàng không?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": "PRODUCT_DETAIL",
+          "expected_entities": [
+            "SensitiveCare Mild Toothpaste"
+          ],
+          "found_entities": [
+            "SensitiveCare Mild Toothpaste"
+          ],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 81031,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Hiện tại chúng tôi còn hàng SensitiveCare Mild Toothpaste. Số lượng hiện có là 75 sản phẩm.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "pass",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        }
+      ]
+    },
+    {
+      "scenario_key": "ambiguous_product_clarification",
+      "title": "Câu hỏi mơ hồ rồi làm rõ sản phẩm",
+      "passed": false,
+      "scenario_pass_rate": 0.5,
+      "follow_up_accuracy": 0.0,
+      "multi_task_accuracy": 0.0,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Tôi muốn xem bàn chải",
+          "expected_intent": "PRODUCT_LIST",
+          "actual_intent": "PRODUCT_LIST",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 225026,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Dưới đây là một số sản phẩm bàn chải mà bạn có thể quan tâm:\n\n1. **OralWave Pro S2 Electric Toothbrush** - Bàn chải điện với nhiều chế độ làm sạch và đầu chải thay thế, giá 1.350.000 VND.\n\n2. **SonicCare Lite E1 Electric Toothbrush** - Bàn chải điện có chế độ rung nhẹ và hẹn giờ hai phút, giá 890.000 VND.\n\nNgoài ra còn có các sản phẩm bàn chải kẽ răng như:\n\n3. **GapCare Angle Interdental Brush** - Bàn chải kẽ răng dạng góc giúp tiếp cận vùng quanh mắc cài hoặc cầu răng, giá 85.000 VND.\n\n4. **InterClean Size 0 Interdental Brush** - Bàn chải kẽ răng cỡ nhỏ hỗ trợ làm sạch vùng kẽ răng hẹp, giá 65.000 VND.\n\nVà các sản phẩm bàn chải thường như:\n\n5. **CleanSmile Soft 300 Manual Toothbrush** - Bàn chải lông mềm dành cho vệ sinh răng miệng hằng ngày, giá 45.000 VND.\n\n6. **PureDent Compact Soft Brush** - Bàn chải thủ công có tay cầm chống trượt và lông chải mềm, giá 39.000 VND.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 1,
+          "query": "Bàn chải điện thì sao?",
+          "expected_intent": "PRODUCT_LIST",
+          "actual_intent": "PRODUCT_LIST",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 131973,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Chúng tôi có hai loại bàn chải điện để bạn lựa chọn: \n1. OralWave Pro S2 Electric Toothbrush với nhiều chế độ làm sạch và đầu chải thay thế, giá là 1.350.000 VND.\n2. SonicCare Lite E1 Electric Toothbrush với chế độ rung nhẹ và hẹn giờ hai phút, thiết kế đơn giản phù hợp cho người mới dùng bàn chải điện, giá là 890.000 VND.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 2,
+          "query": "SonicCare Lite E1 Electric Toothbrush giá bao nhiêu?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": null,
+          "expected_entities": [
+            "SonicCare Lite E1 Electric Toothbrush"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 62163,
+          "http_status": 500,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "http_error: HTTP 500"
+          ],
+          "error_type": "http_error",
+          "error_message": "HTTP 500",
+          "timeout": false
+        },
+        {
+          "turn_index": 3,
+          "query": "Còn hàng không?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": "PRODUCT_DETAIL",
+          "expected_entities": [
+            "SonicCare Lite E1 Electric Toothbrush"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 10602,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Bạn đang hỏi sản phẩm nào? Vui lòng cho tôi tên cụ thể.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "entity_present: missing ['SonicCare Lite E1 Electric Toothbrush']",
+            "follow_up_memory_used: expected prior entity in response without re-mention."
+          ]
+        }
+      ]
+    },
+    {
+      "scenario_key": "social_then_service",
+      "title": "Chitchat rồi quay lại tư vấn dịch vụ",
+      "passed": false,
+      "scenario_pass_rate": 0.8,
+      "follow_up_accuracy": 0.0,
+      "multi_task_accuracy": null,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Bạn có thể tư vấn giúp tôi không?",
+          "expected_intent": "CHITCHAT",
+          "actual_intent": "CHITCHAT",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 56562,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Tất nhiên rồi, tôi rất sẵn lòng giúp đỡ bạn. Bạn cần tư vấn về điều gì?",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 1,
+          "query": "Tôi bị ê buốt răng thì nên hỏi gì?",
+          "expected_intent": "FAQ",
+          "actual_intent": "FAQ",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 152263,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Khi bạn bị ê buốt răng, nên hỏi bác sĩ về các nguyên nhân có thể gây ra tình trạng này như sâu răng, mòn men răng hoặc viêm nướu. Bạn cũng cần biết cách sử dụng kem đánh răng dành cho răng nhạy cảm và liệu có cần dùng thường xuyên hay không. Nếu ê buốt kéo dài hoặc đau rõ rệt, bạn nên khám để loại trừ các vấn đề khác. Đồng thời, nếu tình trạng này xuất hiện sau tẩy trắng răng, hãy hỏi bác sĩ về cách chăm sóc phù hợp.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 2,
+          "query": "Phòng khám có dịch vụ tẩy trắng răng tại phòng khám không?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 132047,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Phòng khám của chúng tôi cung cấp dịch vụ tẩy trắng răng tại phòng khám. Dịch vụ này giúp làm sáng màu răng bằng vật liệu chuyên dụng trong điều kiện kiểm soát tại phòng khám. Thời lượng cho mỗi lần tẩy trắng là khoảng 90 phút và giá cả là 2,500,000 VND.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 3,
+          "query": "Dịch vụ đó mất bao lâu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 68903,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Tôi chưa xác định được chính xác dịch vụ. Bạn vui lòng nhập tên cụ thể hơn.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "entity_present: missing ['Tẩy trắng răng tại phòng khám']",
+            "follow_up_memory_used: expected prior entity in response without re-mention."
+          ]
+        },
+        {
+          "turn_index": 4,
+          "query": "Cảm ơn nhé",
+          "expected_intent": "CHITCHAT",
+          "actual_intent": "CHITCHAT",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 90480,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Rất vui được giúp đỡ bạn. Nếu có thêm câu hỏi nào, hãy liên hệ với chúng tôi nhé!",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        }
+      ]
+    },
+    {
+      "scenario_key": "multi_intent_service_price_and_faq",
+      "title": "Một câu nhiều intent rồi follow-up",
+      "passed": false,
+      "scenario_pass_rate": 0.25,
+      "follow_up_accuracy": 1.0,
+      "multi_task_accuracy": 0.0,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Tẩy trắng răng tại phòng khám giá bao nhiêu và có đau không?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": true,
+          "latency_ms": 190387,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Tẩy trắng răng tại phòng khám có giá là 2.500.000 VND và thời lượng khoảng 90 phút. Một số người có thể cảm thấy ê buốt nhẹ sau khi tẩy trắng răng trong một thời gian ngắn, nhưng điều này thường không kéo dài lâu. Nếu bạn gặp tình trạng ê buốt nhiều hoặc kéo dài, hãy liên hệ phòng khám để được kiểm tra.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "fail",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "multi_task_produced: found 0 planned task(s)."
+          ]
+        },
+        {
+          "turn_index": 1,
+          "query": "Mất bao lâu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 121312,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Quy trình tẩy trắng răng tại phòng khám của chúng tôi mất khoảng 90 phút. Trong quá trình này, màu sắc răng sẽ được cải thiện dựa trên cơ địa và thói quen ăn uống cá nhân.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "pass",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": []
+        },
+        {
+          "turn_index": 2,
+          "query": "Phòng khám mở cửa cuối tuần không?",
+          "expected_intent": "CLINIC_INFO",
+          "actual_intent": "CHITCHAT",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 98628,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Chào bạn! Phòng khám của chúng tôi có mở cửa vào cuối tuần đó. Bạn cần biết thêm thông tin gì không?",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "intent_match: expected CLINIC_INFO, got CHITCHAT"
+          ]
+        },
+        {
+          "turn_index": 3,
+          "query": "Cho tôi số điện thoại",
+          "expected_intent": "CLINIC_INFO",
+          "actual_intent": "CHITCHAT",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 208624,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Xin lỗi, tôi không thể cung cấp số điện thoại của phòng khám qua đây. Bạn có thể liên hệ với chúng tôi thông qua trang web hoặc ứng dụng chính thức của phòng khám nhé.",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "intent_match: expected CLINIC_INFO, got CHITCHAT"
+          ]
+        }
+      ]
+    }
+  ],
+  "acceptance_criteria_mapping": [
+    {
+      "criterion_id": "AC-21",
+      "description": "Chat endpoint returns structured JSON",
+      "result": "fail",
+      "evidence": "valid_json_response: 39/42 turns passed"
+    },
+    {
+      "criterion_id": "AC-22",
+      "description": "LLM output is validated",
+      "result": "fail",
+      "evidence": "valid_json_response: 39/42; not_degraded: 37/42"
+    },
+    {
+      "criterion_id": "AC-31",
+      "description": "One message can produce multiple tasks",
+      "result": "fail",
+      "evidence": "multi_task_accuracy: 0.0"
+    },
+    {
+      "criterion_id": "AC-32",
+      "description": "Implicit follow-up cannot leave stale planner entities",
+      "result": "fail",
+      "evidence": "follow_up_memory_used pass rate: 0.2667"
+    },
+    {
+      "criterion_id": "AC-33",
+      "description": "Explicit entity switching resolved against DB",
+      "result": "fail",
+      "evidence": "entity_present on switching turns: 1/2"
+    },
+    {
+      "criterion_id": "AC-34",
+      "description": "Synthesis cannot return entity conflicting with evidence",
+      "result": "fail",
+      "evidence": "no_hallucinated_price failures: 3; entity_present failures: 13"
+    },
+    {
+      "criterion_id": "AC-35",
+      "description": "Conversation eval measures entity binding, follow-up, multi-task, scenario pass rate",
+      "result": "pass",
+      "evidence": "scenarios_passed: 1/10; follow_up_accuracy: 0.2667; multi_task_accuracy: 0.0"
+    }
+  ]
+}

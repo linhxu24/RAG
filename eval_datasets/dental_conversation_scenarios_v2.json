@@ -1,0 +1,244 @@
+{
+  "name": "dental_conversation_scenarios_v2",
+  "version": "2.0",
+  "description": "5 scenarios targeting fixed bugs: entity resolve via normalize_for_match, follow-up memory inheritance, consistency gate after fix, multi-task planning, and entity switching.",
+  "scenarios": [
+    {
+      "scenario_key": "entity_resolve_after_normalize_fix",
+      "title": "Entity resolve với tên có dấu và viết hoa",
+      "description": "Kiểm tra normalize_for_match hoạt động đúng sau fix. Tên entity có dấu tiếng Việt, viết hoa một phần — trước khi fix sẽ fail do normalize lệch giữa canonicalizer và consistency_gate.",
+      "turns": [
+        {
+          "query": "Cho tôi thông tin về Tẩy Trắng Răng Tại Phòng Khám",
+          "expected_intent": "SERVICE_DETAIL",
+          "expected_entities": ["Tẩy trắng răng tại phòng khám"],
+          "metadata": {
+            "test_target": "normalize_for_match",
+            "note": "Viết hoa không nhất quán — normalize_for_match phải chuẩn hóa đúng để resolve"
+          }
+        },
+        {
+          "query": "Chi phí bao nhiêu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "expected_entities": ["Tẩy trắng răng tại phòng khám"],
+          "metadata": {
+            "requires_follow_up_memory": true,
+            "test_target": "entity_inheritance_after_resolve",
+            "note": "Entity phải được inherit từ turn 1 mà không cần mention lại"
+          }
+        },
+        {
+          "query": "TẨY TRẮNG RĂNG TẠI PHÒNG KHÁM có đau không?",
+          "expected_intent": "FAQ",
+          "expected_entities": ["Tẩy trắng răng tại phòng khám"],
+          "metadata": {
+            "test_target": "normalize_case_insensitive",
+            "note": "Toàn bộ chữ hoa — normalize phải xử lý đúng, không tạo entity mới"
+          }
+        },
+        {
+          "query": "Sau khi làm xong cần kiêng gì không?",
+          "expected_intent": "FAQ",
+          "expected_entities": ["Tẩy trắng răng tại phòng khám"],
+          "metadata": {
+            "requires_follow_up_memory": true,
+            "test_target": "deep_follow_up_memory",
+            "note": "Turn 4, entity phải vẫn còn trong session state từ turn 1"
+          }
+        }
+      ]
+    },
+    {
+      "scenario_key": "entity_switch_mid_conversation",
+      "title": "Chuyển entity giữa chừng rồi quay lại",
+      "description": "Kiểm tra entity switching không bị stale binding. Sau khi fix consistency_gate không còn block nhầm khi entity switch, bound_task phải reflect entity mới đúng.",
+      "turns": [
+        {
+          "query": "AquaJet Mini Water Flosser giá bao nhiêu?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "expected_entities": ["AquaJet Mini Water Flosser"],
+          "metadata": {
+            "test_target": "initial_entity_resolve"
+          }
+        },
+        {
+          "query": "Còn hàng không?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "expected_entities": ["AquaJet Mini Water Flosser"],
+          "metadata": {
+            "requires_follow_up_memory": true,
+            "test_target": "follow_up_same_entity"
+          }
+        },
+        {
+          "query": "Cấy ghép Implant đơn lẻ thì sao, giá bao nhiêu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "expected_entities": ["Cấy ghép Implant đơn lẻ"],
+          "metadata": {
+            "test_target": "entity_switch_to_new",
+            "note": "Entity switch từ product sang service — consistency gate không được dùng entity cũ"
+          }
+        },
+        {
+          "query": "Mất bao lâu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "expected_entities": ["Cấy ghép Implant đơn lẻ"],
+          "metadata": {
+            "requires_follow_up_memory": true,
+            "test_target": "follow_up_after_switch",
+            "note": "Phải dùng entity từ turn 3, không phải AquaJet từ turn 1-2"
+          }
+        },
+        {
+          "query": "Quay lại AquaJet, nó dùng được bao lâu?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "expected_entities": ["AquaJet Mini Water Flosser"],
+          "metadata": {
+            "test_target": "switch_back_to_first_entity",
+            "note": "Switch ngược lại entity đầu tiên — resolver phải re-resolve từ DB, không dùng stale state"
+          }
+        }
+      ]
+    },
+    {
+      "scenario_key": "consistency_gate_cardinality",
+      "title": "Kiểm tra consistency gate cardinality sau fix",
+      "description": "Sau khi bỏ effective_query_missing_entity check, gate chỉ còn check cardinality và evidence. Scenario này đảm bảo các check còn lại vẫn hoạt động đúng.",
+      "turns": [
+        {
+          "query": "So sánh AquaJet Mini Water Flosser với SilkLine Waxed Dental Floss",
+          "expected_intent": "PRODUCT_COMPARE",
+          "expected_entities": ["AquaJet Mini Water Flosser", "SilkLine Waxed Dental Floss"],
+          "metadata": {
+            "test_target": "compare_cardinality_two_entities",
+            "note": "PRODUCT_COMPARE yêu cầu EntityScope.TWO_OR_MORE — gate phải pass với đúng 2 entity resolved"
+          }
+        },
+        {
+          "query": "Loại nào phù hợp hơn cho người niềng răng?",
+          "expected_intent": "FAQ",
+          "expected_entities": ["AquaJet Mini Water Flosser", "SilkLine Waxed Dental Floss"],
+          "metadata": {
+            "requires_follow_up_memory": true,
+            "test_target": "faq_after_compare_inherits_both_entities",
+            "note": "FAQ với EntityScope.OPTIONAL — kế thừa cả 2 entity từ compare turn"
+          }
+        },
+        {
+          "query": "AquaJet giá bao nhiêu?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "expected_entities": ["AquaJet Mini Water Flosser"],
+          "metadata": {
+            "test_target": "detail_after_compare_one_entity",
+            "note": "PRODUCT_DETAIL yêu cầu EntityScope.EXACTLY_ONE — phải resolve đúng 1 entity dù session có 2"
+          }
+        },
+        {
+          "query": "Còn loại kia thì sao?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "expected_entities": ["SilkLine Waxed Dental Floss"],
+          "metadata": {
+            "requires_follow_up_memory": true,
+            "test_target": "implicit_reference_to_second_entity",
+            "note": "'loại kia' phải resolve về SilkLine — implicit reference với context 2 entity"
+          }
+        }
+      ]
+    },
+    {
+      "scenario_key": "multi_task_normalize_fix",
+      "title": "Multi-task với entity tiếng Việt có dấu",
+      "description": "Kiểm tra multi-task planning kết hợp với normalize fix. Một câu chứa 2 intent, entity có dấu tiếng Việt đầy đủ — trước khi fix sẽ fail ở consistency gate vì normalize lệch.",
+      "turns": [
+        {
+          "query": "Nhổ răng khôn giá bao nhiêu và có cần nhịn ăn trước không?",
+          "expected_intent": "SERVICE_DETAIL",
+          "expected_entities": ["Nhổ răng khôn"],
+          "metadata": {
+            "expects_multi_task": true,
+            "test_target": "multi_task_service_detail_plus_faq",
+            "note": "Task 1: SERVICE_DETAIL (giá), Task 2: FAQ (nhịn ăn). Cả 2 task phải pass consistency gate sau fix"
+          }
+        },
+        {
+          "query": "Sau khi nhổ thì sưng mấy ngày?",
+          "expected_intent": "FAQ",
+          "expected_entities": ["Nhổ răng khôn"],
+          "metadata": {
+            "requires_follow_up_memory": true,
+            "test_target": "follow_up_after_multi_task"
+          }
+        },
+        {
+          "query": "Phòng khám mở cửa mấy giờ?",
+          "expected_intent": "CLINIC_INFO",
+          "metadata": {
+            "test_target": "intent_switch_no_entity_after_entity_session",
+            "note": "Switch sang CLINIC_INFO với EntityScope.NONE — gate phải pass dù session đang có entity state"
+          }
+        },
+        {
+          "query": "Vậy tôi đặt lịch nhổ răng khôn được không?",
+          "expected_intent": "SERVICE_DETAIL",
+          "expected_entities": ["Nhổ răng khôn"],
+          "metadata": {
+            "requires_follow_up_memory": true,
+            "test_target": "re_reference_after_clinic_info_turn",
+            "note": "Entity phải được nhớ lại sau khi có 1 turn CLINIC_INFO không có entity ở giữa"
+          }
+        }
+      ]
+    },
+    {
+      "scenario_key": "not_found_and_clarification_flow",
+      "title": "Entity không tìm thấy rồi làm rõ",
+      "description": "Kiểm tra flow khi entity không resolve được: gate phải trả về CLARIFY (không phải BLOCK), chatbot hỏi lại, user cung cấp tên đúng, resolve thành công. Đây là flow quan trọng sau khi bỏ effective_query_missing_entity.",
+      "turns": [
+        {
+          "query": "Cho tôi xem máy tăm nước mini",
+          "expected_intent": "PRODUCT_DETAIL",
+          "metadata": {
+            "test_target": "ambiguous_entity_triggers_clarification",
+            "note": "'máy tăm nước mini' không match exact — resolver phải trả về ambiguous hoặc not_found, gate trả CLARIFY"
+          }
+        },
+        {
+          "query": "AquaJet Mini Water Flosser",
+          "expected_intent": "PRODUCT_DETAIL",
+          "expected_entities": ["AquaJet Mini Water Flosser"],
+          "metadata": {
+            "test_target": "user_provides_exact_name_after_clarification",
+            "note": "User cung cấp tên exact — resolver phải resolve thành công ngay lần này"
+          }
+        },
+        {
+          "query": "Còn hàng không?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "expected_entities": ["AquaJet Mini Water Flosser"],
+          "metadata": {
+            "requires_follow_up_memory": true,
+            "test_target": "follow_up_after_clarification_resolved",
+            "note": "Follow-up sau khi đã clarify và resolve thành công — entity phải được giữ trong session"
+          }
+        },
+        {
+          "query": "Có bảo hành không?",
+          "expected_intent": "FAQ",
+          "expected_entities": ["AquaJet Mini Water Flosser"],
+          "metadata": {
+            "requires_follow_up_memory": true,
+            "test_target": "faq_inherits_entity_post_clarification"
+          }
+        },
+        {
+          "query": "Cảm ơn bạn",
+          "expected_intent": "CHITCHAT",
+          "metadata": {
+            "test_target": "graceful_end_after_full_flow",
+            "note": "EntityScope.NONE — gate phải pass, không carry entity state vào CHITCHAT"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -18,10 +18,10 @@
       "scenario_key": "whitening_service_follow_up",
       "title": "Tẩy trắng răng nhiều lượt",
       "turns": [
-        {"query": "Dịch vụ tẩy trắng răng giá bao nhiêu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"]},
-        {"query": "Mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"], "metadata": {"requires_follow_up_memory": true}},
-        {"query": "Có đau không?", "expected_intent": "FAQ", "expected_entities": ["Tẩy trắng răng"], "metadata": {"requires_follow_up_memory": true}},
-        {"query": "Sau khi làm có cần kiêng gì không?", "expected_intent": "FAQ", "expected_entities": ["Tẩy trắng răng"], "metadata": {"requires_follow_up_memory": true}}
+        {"query": "Dịch vụ tẩy trắng răng tại phòng khám giá bao nhiêu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng tại phòng khám"]},
+        {"query": "Mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng tại phòng khám"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Có đau không?", "expected_intent": "FAQ", "expected_entities": ["Tẩy trắng răng tại phòng khám"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Sau khi làm có cần kiêng gì không?", "expected_intent": "FAQ", "expected_entities": ["Tẩy trắng răng tại phòng khám"], "metadata": {"requires_follow_up_memory": true}}
       ]
     },
     {
@@ -31,7 +31,7 @@
         {"query": "Cho tôi thông tin AquaJet Mini Water Flosser", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["AquaJet Mini Water Flosser"]},
         {"query": "Còn hàng không?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["AquaJet Mini Water Flosser"], "metadata": {"requires_follow_up_memory": true}},
         {"query": "Giá bao nhiêu?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["AquaJet Mini Water Flosser"], "metadata": {"requires_follow_up_memory": true}},
-        {"query": "So sánh nó với FlossEase Waxed Dental Floss", "expected_intent": "PRODUCT_COMPARE", "expected_entities": ["AquaJet Mini Water Flosser", "FlossEase Waxed Dental Floss"], "metadata": {"requires_follow_up_memory": true}}
+        {"query": "So sánh nó với SilkLine Waxed Dental Floss", "expected_intent": "PRODUCT_COMPARE", "expected_entities": ["AquaJet Mini Water Flosser", "SilkLine Waxed Dental Floss"], "metadata": {"requires_follow_up_memory": true}}
       ]
     },
     {
@@ -39,9 +39,9 @@
       "title": "Dịch vụ implant theo nhu cầu",
       "turns": [
         {"query": "Phòng khám có dịch vụ nào liên quan đến implant?", "expected_intent": "SERVICE_LIST"},
-        {"query": "Dịch vụ trồng răng implant mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Trồng răng implant"]},
-        {"query": "Chi phí khoảng bao nhiêu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Trồng răng implant"], "metadata": {"requires_follow_up_memory": true}},
-        {"query": "Làm implant có đau không?", "expected_intent": "FAQ", "expected_entities": ["Trồng răng implant"]}
+        {"query": "Dịch vụ cấy ghép Implant đơn lẻ mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Cấy ghép Implant đơn lẻ"]},
+        {"query": "Chi phí khoảng bao nhiêu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Cấy ghép Implant đơn lẻ"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Làm implant có đau không?", "expected_intent": "FAQ", "expected_entities": ["Cấy ghép Implant đơn lẻ"]}
       ]
     },
     {
@@ -68,10 +68,10 @@
       "scenario_key": "toothpaste_compare_follow_up",
       "title": "So sánh kem đánh răng và hỏi tiếp",
       "turns": [
-        {"query": "So sánh FreshMint Total Protection Toothpaste và EnamelGuard Sensitive Toothpaste", "expected_intent": "PRODUCT_COMPARE", "expected_entities": ["FreshMint Total Protection Toothpaste", "EnamelGuard Sensitive Toothpaste"]},
-        {"query": "Loại nào phù hợp răng nhạy cảm hơn?", "expected_intent": "FAQ", "expected_entities": ["FreshMint Total Protection Toothpaste", "EnamelGuard Sensitive Toothpaste"], "metadata": {"requires_follow_up_memory": true}},
-        {"query": "EnamelGuard giá bao nhiêu?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["EnamelGuard Sensitive Toothpaste"]},
-        {"query": "Còn hàng không?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["EnamelGuard Sensitive Toothpaste"], "metadata": {"requires_follow_up_memory": true}}
+        {"query": "So sánh FluoriDent Fresh Mint Toothpaste và SensitiveCare Mild Toothpaste", "expected_intent": "PRODUCT_COMPARE", "expected_entities": ["FluoriDent Fresh Mint Toothpaste", "SensitiveCare Mild Toothpaste"]},
+        {"query": "Loại nào phù hợp răng nhạy cảm hơn?", "expected_intent": "FAQ", "expected_entities": ["FluoriDent Fresh Mint Toothpaste", "SensitiveCare Mild Toothpaste"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "SensitiveCare giá bao nhiêu?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["SensitiveCare Mild Toothpaste"]},
+        {"query": "Còn hàng không?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["SensitiveCare Mild Toothpaste"], "metadata": {"requires_follow_up_memory": true}}
       ]
     },
     {
@@ -80,8 +80,8 @@
       "turns": [
         {"query": "Tôi muốn xem bàn chải", "expected_intent": "PRODUCT_LIST"},
         {"query": "Bàn chải điện thì sao?", "expected_intent": "PRODUCT_LIST"},
-        {"query": "DentaCare Sonic X1 Electric Toothbrush giá bao nhiêu?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["DentaCare Sonic X1 Electric Toothbrush"]},
-        {"query": "Còn hàng không?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["DentaCare Sonic X1 Electric Toothbrush"], "metadata": {"requires_follow_up_memory": true}}
+        {"query": "SonicCare Lite E1 Electric Toothbrush giá bao nhiêu?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["SonicCare Lite E1 Electric Toothbrush"]},
+        {"query": "Còn hàng không?", "expected_intent": "PRODUCT_DETAIL", "expected_entities": ["SonicCare Lite E1 Electric Toothbrush"], "metadata": {"requires_follow_up_memory": true}}
       ]
     },
     {
@@ -90,8 +90,8 @@
       "turns": [
         {"query": "Bạn có thể tư vấn giúp tôi không?", "expected_intent": "CHITCHAT"},
         {"query": "Tôi bị ê buốt răng thì nên hỏi gì?", "expected_intent": "FAQ"},
-        {"query": "Phòng khám có dịch vụ tẩy trắng răng không?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"]},
-        {"query": "Dịch vụ đó mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Phòng khám có dịch vụ tẩy trắng răng tại phòng khám không?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng tại phòng khám"]},
+        {"query": "Dịch vụ đó mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng tại phòng khám"], "metadata": {"requires_follow_up_memory": true}},
         {"query": "Cảm ơn nhé", "expected_intent": "CHITCHAT"}
       ]
     },
@@ -99,8 +99,8 @@
       "scenario_key": "multi_intent_service_price_and_faq",
       "title": "Một câu nhiều intent rồi follow-up",
       "turns": [
-        {"query": "Tẩy trắng răng giá bao nhiêu và có đau không?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"], "metadata": {"expects_multi_task": true}},
-        {"query": "Mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng"], "metadata": {"requires_follow_up_memory": true}},
+        {"query": "Tẩy trắng răng tại phòng khám giá bao nhiêu và có đau không?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng tại phòng khám"], "metadata": {"expects_multi_task": true}},
+        {"query": "Mất bao lâu?", "expected_intent": "SERVICE_DETAIL", "expected_entities": ["Tẩy trắng răng tại phòng khám"], "metadata": {"requires_follow_up_memory": true}},
         {"query": "Phòng khám mở cửa cuối tuần không?", "expected_intent": "CLINIC_INFO"},
         {"query": "Cho tôi số điện thoại", "expected_intent": "CLINIC_INFO"}
       ]

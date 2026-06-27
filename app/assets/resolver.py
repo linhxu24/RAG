@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models import Asset, Document
@@ -39,6 +39,7 @@ class AssetResolver:
         session: Session,
         text: str,
         asset_ids: list[str] | None = None,
+        doc_ids: list[str] | None = None,
     ) -> AssetResolution:
         tokens = detect_asset_tokens(text)
         requested_ids: list[uuid.UUID] = []
@@ -48,6 +49,12 @@ class AssetResolver:
                 requested_ids.append(uuid.UUID(str(value)))
             except (TypeError, ValueError):
                 invalid_ids.append(str(value))
+        scoped_doc_ids: list[uuid.UUID] = []
+        for value in dict.fromkeys(doc_ids or []):
+            try:
+                scoped_doc_ids.append(uuid.UUID(str(value)))
+            except (TypeError, ValueError):
+                continue
         if not tokens and not requested_ids:
             return AssetResolution(
                 text=text,
@@ -56,9 +63,15 @@ class AssetResolver:
             )
         conditions = []
         if tokens:
-            conditions.append(Asset.asset_token.in_(tokens))
+            token_conditions = [Asset.asset_token.in_(tokens)]
+            if scoped_doc_ids:
+                token_conditions.append(Asset.doc_id.in_(scoped_doc_ids))
+            conditions.append(and_(*token_conditions))
         if requested_ids:
-            conditions.append(Asset.asset_id.in_(requested_ids))
+            id_conditions = [Asset.asset_id.in_(requested_ids)]
+            if scoped_doc_ids:
+                id_conditions.append(Asset.doc_id.in_(scoped_doc_ids))
+            conditions.append(and_(*id_conditions))
         records = session.scalars(
             select(Asset)
             .join(Document, Document.doc_id == Asset.doc_id)

@@ -35,7 +35,13 @@ export function ChatPage() {
   const [trace, setTrace] = useState<TraceRecord>();
   const scrollRef = useRef<HTMLDivElement>(null);
   const mutation = useMutation({
-    mutationFn: (message: string) => sendChat(message, sessionId),
+    mutationFn: ({
+      message,
+      suggestionId,
+    }: {
+      message: string;
+      suggestionId?: string;
+    }) => sendChat(message, sessionId, suggestionId),
   });
 
   useEffect(() => {
@@ -45,8 +51,8 @@ export function ChatPage() {
     });
   }, [messages, mutation.isPending]);
 
-  const send = async () => {
-    const text = value.trim();
+  const send = async (suggestedQuery?: string, suggestionId?: string) => {
+    const text = (suggestedQuery ?? value).trim();
     if (!text || mutation.isPending) return;
     setValue("");
     const userMessage: ChatMessage = {
@@ -57,7 +63,10 @@ export function ChatPage() {
     };
     setMessages((current) => [...current, userMessage]);
     try {
-      const response = await mutation.mutateAsync(text);
+      const response = await mutation.mutateAsync({
+        message: text,
+        suggestionId,
+      });
       setLatestResponse(response);
       setMessages((current) => [
         ...current,
@@ -165,7 +174,14 @@ export function ChatPage() {
                       </div>
                     </div>
                   ) : (
-                    <AssistantMessageCard key={message.id} message={message} />
+                    <AssistantMessageCard
+                      key={message.id}
+                      message={message}
+                      disabled={mutation.isPending}
+                      onSuggestion={(suggestion) =>
+                        void send(suggestion.query, suggestion.suggestion_id)
+                      }
+                    />
                   ),
                 )}
                 {mutation.isPending && (

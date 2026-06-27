@@ -68,6 +68,15 @@ export interface ChatDebugInfo {
   retrieval?: Record<string, unknown>;
 }
 
+export interface ChatSuggestion {
+  suggestion_id: string;
+  type: "next_question" | "recommendation";
+  label: string;
+  query: string;
+  target_intent: string;
+  reason_code: string;
+}
+
 export interface ChatResponse {
   trace_id: string;
   intent?: string;
@@ -75,7 +84,8 @@ export interface ChatResponse {
   degraded?: boolean;
   answer?: ChatAnswer;
   message?: ChatAnswer;
-  debug?: ChatDebugInfo;
+  suggestions?: ChatSuggestion[];
+  debug?: ChatDebugInfo | null;
   error?: {
     type?: string;
     message: string;

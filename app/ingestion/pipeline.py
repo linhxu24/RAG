@@ -41,6 +41,7 @@ from app.ingestion.review import apply_document_status
 from app.ingestion.smoke_checks import run_ingestion_smoke_checks
 from app.ingestion.table_normalizer import NormalizedTable, normalize_table
 from app.ingestion.table_processor import TableProcessor, serialize_row
+from app.ner.entity_span_extractor import EntitySpanExtractor
 
 DuplicatePolicy = Literal["reject", "reuse", "replace", "force"]
 
@@ -73,6 +74,7 @@ class IngestionPipeline:
         self.chunker = DocumentChunker()
         self.embedder = EmbeddingService(settings)
         self.table_processor = TableProcessor()
+        self.entity_span_extractor = EntitySpanExtractor(settings)
 
     def ingest(
         self,
@@ -270,6 +272,25 @@ class IngestionPipeline:
                 if options.extract_assets and (placeholder_count or extraction_errors):
                     review_reasons.append("one_or_more_document_images_were_not_extracted")
 
+            ingestion_entity_report: dict[str, Any] = {}
+            with self._stage(stage_traces, "entity_extraction"):
+                entity_rows = self._entity_extraction_rows(normalized_tables)
+                ingestion_entities = self.entity_span_extractor.extract_for_ingestion(
+                    text_blocks=[
+                        {
+                            "text": block.text,
+                            "page_number": block.page_number,
+                        }
+                        for block in parsed.text_blocks
+                    ],
+                    table_rows=entity_rows,
+                    known_products=self._known_ingestion_names(entity_rows, "product"),
+                    known_services=self._known_ingestion_names(entity_rows, "service"),
+                )
+                ingestion_entity_report = ingestion_entities.as_dict()
+                if ingestion_entities.degraded:
+                    review_reasons.append("entity_extraction_degraded")
+
             table_rows_created = products_created = services_created = 0
             faqs_created = clinic_info_created = 0
             business_duplicates_skipped = 0
@@ -455,6 +476,7 @@ class IngestionPipeline:
                 report["clinic_info_created"] = clinic_info_created
                 report["document_classification"] = document_classification.as_dict()
                 report["business_validation"] = business_validation_reports
+                report["ingestion_entity_extraction"] = ingestion_entity_report
                 report["unresolved_image_references"] = unresolved_image_references
                 report["smoke_test"] = smoke_report.as_dict()
 
@@ -482,6 +504,7 @@ class IngestionPipeline:
                 "table_classifications": table_classifications,
                 "document_classification": document_classification.as_dict(),
                 "business_validation": business_validation_reports,
+                "ingestion_entity_extraction": ingestion_entity_report,
                 "companion_asset_paths": [str(path) for path in options.asset_paths],
                 "unresolved_image_references": unresolved_image_references,
                 "review_reasons": review_reasons,
@@ -564,6 +587,31 @@ class IngestionPipeline:
             text_blocks[0].text = mask_asset_positions(text_blocks[0].text, unplaced)
         else:
             text_blocks.append(ParsedTextBlock("\n".join(unplaced)))
+
+    @staticmethod
+    def _entity_extraction_rows(
+        normalized_tables: list[tuple[Any, NormalizedTable]],
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for _parsed_table, normalized in normalized_tables:
+            entity_type = normalized.classification.entity_type
+            for row in normalized.rows:
+                rows.append({**row, "_entity_type": entity_type})
+        return rows
+
+    @staticmethod
+    def _known_ingestion_names(
+        rows: list[dict[str, Any]],
+        entity_type: str,
+    ) -> list[str]:
+        names: list[str] = []
+        for row in rows:
+            if row.get("_entity_type") != entity_type:
+                continue
+            value = row.get("name")
+            if value:
+                names.append(str(value))
+        return list(dict.fromkeys(names))
 
     @staticmethod
     @contextmanager

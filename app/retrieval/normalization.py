@@ -90,6 +90,11 @@ def normalize_vietnamese(value: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^\w]+", " ", without_marks)).strip()
 
 
+def normalize_for_match(text: str) -> str:
+    """Shared normalizer for entity name matching across orchestration."""
+    return normalize_vietnamese(text).lower().strip()
+
+
 def query_tokens(value: str) -> list[str]:
     """Tokenize after normalization, keeping only tokens > 1 char."""
     return [

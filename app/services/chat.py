@@ -7,7 +7,7 @@ from app.constants import Intent, RetrievalMode
 from app.generation.generator import GenerationValidationError, GroundedGenerator
 from app.generation.llm_client import build_llm_client
 from app.generation.renderer import ResponseRenderer
-from app.generation.schemas import ChatRequest, ChatResponse
+from app.generation.schemas import ChatRequest, ChatResponse, ChatSuggestion
 from app.ingestion.embedder import EmbeddingService
 from app.memory.conversation_memory import ConversationMemory
 from app.ner.entity_span_extractor import EntitySpanExtractor
@@ -18,6 +18,7 @@ from app.orchestration.consistency_gate import ConsistencyGate
 from app.orchestration.context_binder import ContextBinder
 from app.orchestration.evidence_merger import EvidenceMerger
 from app.orchestration.intent_registry import capability_for
+from app.orchestration.suggestions import ContextualSuggestionEngine
 from app.orchestration.task_canonicalizer import TaskCanonicalizer
 from app.orchestration.task_planner import TaskPlanner
 from app.orchestration.task_resolver import TaskEntityResolver
@@ -95,6 +96,10 @@ class ChatService:
             settings=settings,
         )
         self.evidence_merger = EvidenceMerger(settings)
+        self.suggestion_engine = ContextualSuggestionEngine(
+            max_suggestions=settings.max_contextual_suggestions,
+            history_limit=settings.suggestion_history_limit,
+        )
 
     async def chat(self, session: Session, request: ChatRequest) -> ChatResponse:
         trace = TraceRecorder.start(session, request.message, request.session_id)
@@ -595,15 +600,23 @@ class ChatService:
                 "missing_info": evidence_pack.missing_info,
                 "conflicts": evidence_pack.conflicts,
             }
-        debug_data["retrieval"] = {
-            "planner_plan": plan.as_dict(),
-            "bound_plan": bound_plan.as_dict(),
-            "bound_gate": bound_gate.model_dump(mode="json"),
-            "evidence_gate": evidence_gate.model_dump(mode="json"),
-            "evidence": evidence_pack.as_dict(),
-            "context_items": len(context["items"]),
-            "pipeline": "evidence_synthesis",
-        }
+        if self.settings.debug:
+            debug_data.update(
+                self._orchestration_debug_payload(
+                    binding_result=binding_pipeline_result,
+                    gate_report=bound_gate,
+                    plan=plan,
+                )
+            )
+            debug_data["retrieval"] = {
+                "planner_plan": plan.as_dict(),
+                "bound_plan": bound_plan.as_dict(),
+                "bound_gate": bound_gate.model_dump(mode="json"),
+                "evidence_gate": evidence_gate.model_dump(mode="json"),
+                "evidence": evidence_pack.as_dict(),
+                "context_items": len(context["items"]),
+                "pipeline": "evidence_synthesis",
+            }
 
         primary_intent = bound_plan.primary_intent
         confidence = plan.confidence
@@ -748,15 +761,121 @@ class ChatService:
                 )
                 step["output"] = {"valid": True}
 
-        with trace.step("memory_save", {"session_id": request.session_id}) as step:
-            detected_intents = [task.intent.value for task in plan.tasks]
-            conversation_state = self._build_conversation_state(
-                history,
-                bound_plan,
-                evidence_pack,
-                passed_task_ids=evidence_gate.valid_task_ids,
+        detected_intents = [task.intent.value for task in plan.tasks]
+        conversation_state = self._build_conversation_state(
+            history,
+            bound_plan,
+            evidence_pack,
+            passed_task_ids=evidence_gate.valid_task_ids,
+        )
+        suggestions: list[ChatSuggestion] = []
+        if self.settings.enable_contextual_suggestions:
+            with trace.step(
+                "interest_state_update",
+                {
+                    "task_ids": list(evidence_gate.valid_task_ids),
+                    "selected_suggestion_id": request.selected_suggestion_id,
+                },
+            ) as step:
+                interest_state = self.suggestion_engine.build_interest_state(
+                    original_query=request.message,
+                    history=history,
+                    conversation_state=conversation_state,
+                    plan=bound_plan,
+                    evidence_pack=evidence_pack,
+                    valid_task_ids=evidence_gate.valid_task_ids,
+                )
+                conversation_state["interest_state"] = (
+                    interest_state.model_dump(mode="json")
+                )
+                step["output"] = conversation_state["interest_state"]
+            with trace.step(
+                "suggestion_generation",
+                {
+                    "primary_intent": bound_plan.primary_intent.value,
+                    "journey_stage": interest_state.journey_stage.value,
+                },
+            ) as step:
+                suggestion_candidates = (
+                    self.suggestion_engine.generate_candidates(
+                        original_query=request.message,
+                        plan=bound_plan,
+                        evidence_pack=evidence_pack,
+                        interest_state=interest_state,
+                        valid_task_ids=evidence_gate.valid_task_ids,
+                    )
+                )
+                step["output"] = {
+                    "candidate_count": len(suggestion_candidates),
+                    "candidates": [
+                        candidate.model_dump(mode="json")
+                        for candidate in suggestion_candidates
+                    ],
+                }
+            with trace.step(
+                "suggestion_consistency",
+                {"candidate_count": len(suggestion_candidates)},
+            ) as step:
+                suggestion_selection = (
+                    self.suggestion_engine.rank_and_gate(
+                        candidates=suggestion_candidates,
+                        plan=bound_plan,
+                        evidence_pack=evidence_pack,
+                        conversation_state=conversation_state,
+                        interest_state=interest_state,
+                    )
+                )
+                suggestions = self.suggestion_engine.to_chat_suggestions(
+                    suggestion_selection
+                )
+                conversation_state["suggestion_state"] = (
+                    self.suggestion_engine.update_suggestion_state(
+                        conversation_state=conversation_state,
+                        selection=suggestion_selection,
+                        selected_suggestion_id=request.selected_suggestion_id,
+                    )
+                )
+                step["output"] = {
+                    "accepted": [
+                        item.model_dump(mode="json")
+                        for item in suggestion_selection.accepted
+                    ],
+                    "rejected": [
+                        item.model_dump(mode="json")
+                        for item in suggestion_selection.rejected
+                    ],
+                    "suggestion_state": conversation_state[
+                        "suggestion_state"
+                    ],
+                }
+            if self.settings.debug:
+                debug_data["suggestions"] = {
+                    "interest_state": conversation_state["interest_state"],
+                    "items": [
+                        suggestion.model_dump(mode="json")
+                        for suggestion in suggestions
+                    ],
+                }
+        else:
+            trace.skip(
+                "interest_state_update",
+                "Contextual suggestions disabled",
             )
-            entities = {
+            trace.skip(
+                "suggestion_generation",
+                "Contextual suggestions disabled",
+            )
+            trace.skip(
+                "suggestion_consistency",
+                "Contextual suggestions disabled",
+            )
+
+        memory_save_payload = {
+            "session_id": request.session_id,
+            "user_content": request.message,
+            "assistant_content": response.result.text,
+            "detected_intents": detected_intents,
+            "entities": {
                 "tasks": {
                     task.task_id: {
                         "intent": task.intent.value,
@@ -768,8 +887,8 @@ class ChatService:
                     for task in bound_plan.tasks
                     if task.task_id in evidence_gate.valid_task_ids
                 },
-            }
-            resolved_ids = {
+            },
+            "resolved_ids": {
                 "evidence_ids": [
                     {
                         "type": item.source_type,
@@ -780,24 +899,11 @@ class ChatService:
                 ],
                 "active_product_ids": conversation_state["active_product_ids"],
                 "active_service_ids": conversation_state["active_service_ids"],
-            }
-            save_result = self.memory.save_exchange(
-                session,
-                session_id=request.session_id,
-                user_content=request.message,
-                assistant_content=response.result.text,
-                detected_intents=detected_intents,
-                entities=entities,
-                resolved_ids=resolved_ids,
-                state=conversation_state,
-                trace_id=trace.trace_id,
-            )
-            step["output"] = {
-                "saved": bool(request.session_id),
-                "detected_intents": detected_intents,
-                "state": conversation_state,
-                "summary": save_result.get("summary"),
-            }
+            },
+            "state": conversation_state,
+            "trace_id": trace.trace_id,
+            "suggestion_count": len(suggestions),
+        }
 
         return self._finish(
             session,
@@ -806,7 +912,43 @@ class ChatService:
             request.debug,
             debug_data,
             confidence,
+            suggestions=suggestions,
+            memory_save_payload=memory_save_payload,
         )
+
+    @staticmethod
+    def _orchestration_debug_payload(
+        *,
+        binding_result,
+        gate_report,
+        plan,
+    ) -> dict[str, Any]:
+        resolution = binding_result.resolutions[0] if binding_result.resolutions else None
+        bound_task = (
+            binding_result.bound_plan.tasks[0]
+            if binding_result.bound_plan.tasks
+            else None
+        )
+        decision = binding_result.decisions[0] if binding_result.decisions else None
+        return {
+            "resolution_status": resolution.status if resolution else "unknown",
+            "resolution_source": resolution.source if resolution else "unknown",
+            "gate_status": gate_report.status.value if gate_report else "unknown",
+            "bound_task": bound_task.model_dump(mode="json") if bound_task else {},
+            "planned_tasks": [
+                task.model_dump(mode="json")
+                for task in plan.tasks
+            ]
+            if plan
+            else [],
+            "decision": decision.model_dump(mode="json") if decision else {},
+            "violations": [
+                violation.model_dump(mode="json")
+                for violation in gate_report.violations
+            ]
+            if gate_report
+            else [],
+        }
 
     def _finish(
         self,
@@ -816,6 +958,8 @@ class ChatService:
         debug: bool,
         debug_data: dict[str, Any],
         confidence: float,
+        suggestions: list[ChatSuggestion] | None = None,
+        memory_save_payload: dict[str, Any] | None = None,
     ) -> ChatResponse:
         with trace.step("asset_resolver", {"text_chars": len(response.result.text)}) as step:
             response = self.renderer.resolve_assets(session, response)
@@ -823,11 +967,12 @@ class ChatService:
                 "resolved": len(response.result.assets),
                 "missing": response.result.missing_assets,
             }
-        with trace.step("response_rendering", {"debug": debug}) as step:
+        with trace.step("response_rendering", {"debug": self.settings.debug}) as step:
             rendered = self.renderer.render(
                 str(trace.trace_id),
                 response,
-                debug=debug and self.settings.debug,
+                suggestions=suggestions,
+                debug=self.settings.debug,
                 debug_data=debug_data,
             )
             step["output"] = {
@@ -836,6 +981,29 @@ class ChatService:
                 "degraded": response.degraded,
                 "safety": response.safety.model_dump(mode="json"),
             }
+        if memory_save_payload is not None:
+            with trace.step(
+                "memory_save",
+                {"session_id": memory_save_payload.get("session_id")},
+            ) as step:
+                save_result = self.memory.save_exchange(
+                    session,
+                    session_id=memory_save_payload.get("session_id"),
+                    user_content=memory_save_payload["user_content"],
+                    assistant_content=memory_save_payload["assistant_content"],
+                    detected_intents=memory_save_payload["detected_intents"],
+                    entities=memory_save_payload["entities"],
+                    resolved_ids=memory_save_payload["resolved_ids"],
+                    state=memory_save_payload["state"],
+                    trace_id=memory_save_payload["trace_id"],
+                )
+                step["output"] = {
+                    "saved": bool(memory_save_payload.get("session_id")),
+                    "detected_intents": memory_save_payload["detected_intents"],
+                    "state": memory_save_payload["state"],
+                    "summary": save_result.get("summary"),
+                    "suggestion_count": memory_save_payload["suggestion_count"],
+                }
         trace.finish(
             intent=response.intent.value,
             confidence=confidence,
@@ -1085,6 +1253,12 @@ def _normalize_conversation_state(value: object) -> dict[str, Any]:
         "last_intents": [],
         "last_filters": {},
         "pending_clarification": None,
+        "interest_state": {},
+        "suggestion_state": {
+            "recent_impressions": [],
+            "accepted_suggestion_ids": [],
+            "dismissed_suggestion_ids": [],
+        },
     }
     if not isinstance(value, dict):
         return state
@@ -1106,6 +1280,32 @@ def _normalize_conversation_state(value: object) -> dict[str, Any]:
     state["last_filters"] = last_filters if isinstance(last_filters, dict) else {}
     pending = value.get("pending_clarification")
     state["pending_clarification"] = pending if isinstance(pending, dict) else None
+    interest_state = value.get("interest_state")
+    state["interest_state"] = (
+        dict(interest_state) if isinstance(interest_state, dict) else {}
+    )
+    suggestion_state = value.get("suggestion_state")
+    if isinstance(suggestion_state, dict):
+        state["suggestion_state"] = {
+            "recent_impressions": _dedupe(
+                str(item)
+                for item in _list_value(
+                    suggestion_state.get("recent_impressions")
+                )
+            )[:24],
+            "accepted_suggestion_ids": _dedupe(
+                str(item)
+                for item in _list_value(
+                    suggestion_state.get("accepted_suggestion_ids")
+                )
+            )[:24],
+            "dismissed_suggestion_ids": _dedupe(
+                str(item)
+                for item in _list_value(
+                    suggestion_state.get("dismissed_suggestion_ids")
+                )
+            )[:24],
+        }
     return state
 
 

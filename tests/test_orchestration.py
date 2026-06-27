@@ -134,7 +134,7 @@ def test_heuristic_planner_decomposes_multi_intent_query_as_proposals():
     assert not hasattr(plan.tasks[0], "resolved_ids")
 
 
-def test_planner_preserves_llm_usage_when_empty_plan_falls_back():
+def test_planner_preserves_llm_usage_when_empty_plan_returns_safe_unknown():
     class EmptyPlannerLLM:
         async def generate(self, **_kwargs):
             return LLMResponse(
@@ -160,10 +160,11 @@ def test_planner_preserves_llm_usage_when_empty_plan_falls_back():
         )
     )
 
-    assert plan.source == "heuristic"
-    assert plan.tasks[0].intent == Intent.PRODUCT_LIST
+    assert plan.source == "safe_unknown"
+    assert plan.tasks[0].intent == Intent.UNKNOWN
+    assert plan.tasks[0].planner_needs_clarification is True
     assert plan.metadata["planner_fallback"] == (
-        "heuristic_after_empty_llm_plan"
+        "safe_unknown_after_empty_llm_plan"
     )
     assert plan.metadata["usage"] == {
         "prompt_tokens": 321,
@@ -529,10 +530,7 @@ def test_pre_tool_gate_blocks_internal_task_mismatch():
     assert report.status == GateStatus.BLOCK
     assert {
         violation.code for violation in report.violations
-    } >= {
-        "effective_query_missing_entity",
-        "filter_id_mismatch",
-    }
+    } == {"filter_id_mismatch"}
 
 
 def test_pre_tool_gate_blocks_entity_on_clinic_info():

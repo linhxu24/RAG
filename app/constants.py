@@ -54,6 +54,9 @@ TRACE_STEPS = (
     "llm_generation",
     "json_validation",
     "generation_fallback",
+    "interest_state_update",
+    "suggestion_generation",
+    "suggestion_consistency",
     "memory_save",
     "response_rendering",
 )

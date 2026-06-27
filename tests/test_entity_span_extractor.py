@@ -60,3 +60,20 @@ def test_fallback_span_extractor_matches_mixed_reference_explicit_entity():
     assert [span.metadata["catalog_name"] for span in product_spans] == [
         "EnamelGuard Sensitive Toothpaste"
     ]
+
+
+def test_fallback_span_extractor_suppresses_alias_inside_full_name_match():
+    extractor = EntitySpanExtractor(Settings(enable_gliner_ner=False))
+
+    result = extractor.extract(
+        "Cho tôi thông tin AquaJet Mini Water Flosser",
+        known_products=[
+            "AquaJet Mini Water Flosser",
+            "HydroSmile Home Water Flosser",
+        ],
+    )
+
+    product_spans = [span for span in result.spans if span.label == "product_name"]
+    assert [span.metadata["catalog_name"] for span in product_spans] == [
+        "AquaJet Mini Water Flosser"
+    ]

@@ -182,6 +182,12 @@ def _empty_state() -> dict[str, Any]:
         "last_intents": [],
         "last_filters": {},
         "pending_clarification": None,
+        "interest_state": {},
+        "suggestion_state": {
+            "recent_impressions": [],
+            "accepted_suggestion_ids": [],
+            "dismissed_suggestion_ids": [],
+        },
     }
 
 
@@ -206,6 +212,23 @@ def _normalize_state(value: object) -> dict[str, Any]:
     state["pending_clarification"] = (
         pending if isinstance(pending, dict) or pending is None else {"message": str(pending)}
     )
+    interest_state = value.get("interest_state")
+    state["interest_state"] = (
+        dict(interest_state) if isinstance(interest_state, dict) else {}
+    )
+    suggestion_state = value.get("suggestion_state")
+    if isinstance(suggestion_state, dict):
+        state["suggestion_state"] = {
+            "recent_impressions": _string_list(
+                suggestion_state.get("recent_impressions")
+            )[:24],
+            "accepted_suggestion_ids": _string_list(
+                suggestion_state.get("accepted_suggestion_ids")
+            )[:24],
+            "dismissed_suggestion_ids": _string_list(
+                suggestion_state.get("dismissed_suggestion_ids")
+            )[:24],
+        }
     return state
 
 
@@ -241,6 +264,14 @@ def _build_summary(state: dict[str, Any]) -> str:
         )
     if state.get("last_intents"):
         parts.append("Intent gần nhất: " + ", ".join(state["last_intents"][:5]) + ".")
+    interest = state.get("interest_state")
+    if isinstance(interest, dict):
+        journey_stage = interest.get("journey_stage")
+        goals = _string_list(interest.get("goals"))
+        if journey_stage:
+            parts.append(f"Giai đoạn quan tâm: {journey_stage}.")
+        if goals:
+            parts.append("Mục tiêu đang quan tâm: " + ", ".join(goals[:4]) + ".")
     pending = state.get("pending_clarification")
     if isinstance(pending, dict) and pending.get("message"):
         parts.append(f"Đang chờ làm rõ: {pending['message']}")

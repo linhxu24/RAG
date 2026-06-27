@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     max_sub_queries: int = 3
     max_evidence_items: int = 12
     conversation_history_turns: int = 8
+    enable_contextual_suggestions: bool = True
+    max_contextual_suggestions: int = 3
+    suggestion_history_limit: int = 12
 
     database_url: str | None = None
     postgres_host: str = "localhost"

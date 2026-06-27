@@ -1,13 +1,10 @@
 import json
 import re
-import uuid
 from copy import deepcopy
 from typing import Any
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Asset, Chunk, Document, Product, Service, TableRow
 from app.generation.schemas import GeneratedResponse
 from app.retrieval.normalization import normalize_vietnamese
 
@@ -58,44 +55,42 @@ class ResponseValidator:
         }
         for item in response.result.items:
             for value in (item.id, item.chunk_id, item.row_id):
-                if value and value not in allowed_ids and not self._exists(session, value):
-                    raise ResponseValidationError(f"Referenced ID does not exist: {value}")
-            if (
-                item.doc_id
-                and item.doc_id not in allowed_doc_ids
-                and not self._exists(session, item.doc_id)
-            ):
-                raise ResponseValidationError(f"Referenced doc_id does not exist: {item.doc_id}")
-            for asset_id in item.asset_ids:
-                if asset_id not in allowed_asset_ids and not self._exists(session, asset_id):
-                    raise ResponseValidationError(f"Referenced asset_id does not exist: {asset_id}")
-        for entity in response.entities:
-            if (
-                entity.matched_id
-                and entity.matched_id not in allowed_ids
-                and not self._exists(session, entity.matched_id)
-            ):
+                if value and value not in allowed_ids:
+                    raise ResponseValidationError(
+                        f"Referenced ID is outside retrieved context: {value}"
+                    )
+            if item.doc_id and item.doc_id not in allowed_doc_ids:
                 raise ResponseValidationError(
-                    f"Referenced entity ID does not exist: {entity.matched_id}"
+                    f"Referenced doc_id is outside retrieved context: {item.doc_id}"
+                )
+            for asset_id in item.asset_ids:
+                if asset_id not in allowed_asset_ids:
+                    raise ResponseValidationError(
+                        f"Referenced asset_id is outside retrieved context: {asset_id}"
+                    )
+        for entity in response.entities:
+            if entity.matched_id and entity.matched_id not in allowed_ids:
+                raise ResponseValidationError(
+                    "Referenced entity ID is outside retrieved context: "
+                    f"{entity.matched_id}"
                 )
         for source in response.result.sources:
-            if source.source_id not in allowed_ids and not self._exists(session, source.source_id):
+            if source.source_id not in allowed_ids:
                 raise ResponseValidationError(
-                    f"Referenced source ID does not exist: {source.source_id}"
+                    "Referenced source ID is outside retrieved context: "
+                    f"{source.source_id}"
                 )
-            if (
-                source.doc_id
-                and source.doc_id not in allowed_doc_ids
-                and not self._exists(session, source.doc_id)
-            ):
+            if source.doc_id and source.doc_id not in allowed_doc_ids:
                 raise ResponseValidationError(
-                    f"Referenced source doc_id does not exist: {source.doc_id}"
+                    "Referenced source doc_id is outside retrieved context: "
+                    f"{source.doc_id}"
                 )
         for asset in response.result.assets:
             asset_id = asset.get("asset_id")
-            if asset_id and not self._exists(session, str(asset_id)):
+            if asset_id and str(asset_id) not in allowed_asset_ids:
                 raise ResponseValidationError(
-                    f"Referenced response asset_id does not exist: {asset_id}"
+                    "Referenced response asset_id is outside retrieved context: "
+                    f"{asset_id}"
                 )
         self._validate_prices(response.result.text, context)
         self._validate_semantics(response.result.text, context)
@@ -210,6 +205,7 @@ class ResponseValidator:
                     allowed_ids,
                 )
                 if context_item is None:
+                    normalized_items.append(item)
                     continue
                 source = context_item.get("source") or {}
                 raw_json = context_item.get("raw_json") or {}
@@ -241,6 +237,7 @@ class ResponseValidator:
                     allowed_ids,
                 )
                 if context_item is None:
+                    normalized_sources.append(source_ref)
                     continue
                 source = context_item.get("source") or {}
                 source_ref["source_id"] = str(context_item["source_id"])
@@ -264,9 +261,8 @@ class ResponseValidator:
                     alias_to_item,
                     allowed_ids,
                 )
-                entity["matched_id"] = (
-                    str(context_item["source_id"]) if context_item is not None else None
-                )
+                if context_item is not None:
+                    entity["matched_id"] = str(context_item["source_id"])
         return normalized
 
     @staticmethod
@@ -531,27 +527,6 @@ class ResponseValidator:
             value = value[:-3]
         digits = re.sub(r"\D", "", value)
         return int(digits) if digits else None
-
-    @staticmethod
-    def _exists(session: Session | None, value: str) -> bool:
-        if session is None:
-            return False
-        try:
-            identifier = uuid.UUID(value)
-        except (ValueError, TypeError):
-            return False
-        for _model, column in (
-            (Chunk, Chunk.chunk_id),
-            (Asset, Asset.asset_id),
-            (Product, Product.product_id),
-            (Service, Service.service_id),
-            (Document, Document.doc_id),
-            (TableRow, TableRow.row_id),
-        ):
-            if session.scalar(select(column).where(column == identifier)) is not None:
-                return True
-        return False
-
 
 def _int_value(value: object) -> int | None:
     try:

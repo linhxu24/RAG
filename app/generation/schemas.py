@@ -62,8 +62,18 @@ class GeneratedResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=8_000)
     session_id: str | None = None
+    selected_suggestion_id: str | None = None
     history: list[dict[str, Any]] = Field(default_factory=list)
     debug: bool = False
+
+
+class ChatSuggestion(BaseModel):
+    suggestion_id: str
+    type: Literal["next_question", "recommendation"]
+    label: str
+    query: str
+    target_intent: Intent
+    reason_code: str
 
 
 class ChatResponse(BaseModel):
@@ -73,4 +83,5 @@ class ChatResponse(BaseModel):
     answer: ResultBody
     safety: SafetyInfo = Field(default_factory=SafetyInfo)
     degraded: bool = False
-    debug: dict[str, Any] = Field(default_factory=lambda: {"enabled": False})
+    suggestions: list[ChatSuggestion] = Field(default_factory=list)
+    debug: dict[str, Any] | None = None

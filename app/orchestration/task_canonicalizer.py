@@ -13,7 +13,7 @@ from app.orchestration.schemas import (
     ReferenceMode,
     TaskResolution,
 )
-from app.retrieval.router import IntentRouter
+from app.retrieval.normalization import normalize_for_match
 
 
 class TaskCanonicalizer:
@@ -165,11 +165,11 @@ class TaskCanonicalizer:
         query = re.sub(r"\s{2,}", " ", query).strip(" ,.;:-")
         if not entity_names:
             return query or task.planner_query.strip()
-        normalized_query = IntentRouter._normalize(query)
+        normalized_query = normalize_for_match(query)
         missing = [
             name
             for name in entity_names
-            if IntentRouter._normalize(name) not in normalized_query
+            if normalize_for_match(name) not in normalized_query
         ]
         if not missing:
             return query
@@ -205,7 +205,7 @@ class TaskCanonicalizer:
 
 
 def _operation(intent: Intent, query: str) -> str | None:
-    normalized = IntentRouter._normalize(query)
+    normalized = normalize_for_match(query)
     if intent in {Intent.PRODUCT_LIST, Intent.SERVICE_LIST}:
         return "list"
     if intent == Intent.PRODUCT_COMPARE:

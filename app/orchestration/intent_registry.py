@@ -43,6 +43,16 @@ class EvidenceContract(BaseModel):
     minimum_items: int = 0
 
 
+class SuggestionPolicy(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    allowed_next_intents: tuple[Intent, ...] = ()
+    topic_sequence: tuple[str, ...] = ()
+    entity_required: bool = False
+    evidence_required: bool = False
+    max_suggestions: int = 3
+
+
 class IntentCapability(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -55,6 +65,7 @@ class IntentCapability(BaseModel):
     clarification_policy: ClarificationPolicy
     evidence_contract: EvidenceContract = EvidenceContract()
     persist_to_memory: bool = False
+    suggestion_policy: SuggestionPolicy = SuggestionPolicy()
 
 
 _NO_ENTITY_MODES = (ReferenceMode.NO_ENTITY,)
@@ -71,6 +82,14 @@ INTENT_CAPABILITIES: dict[Intent, IntentCapability] = {
         inheritance_rule=InheritanceRule.NO_INHERIT,
         allowed_reference_modes=_NO_ENTITY_MODES,
         clarification_policy=ClarificationPolicy.NEVER,
+        suggestion_policy=SuggestionPolicy(
+            allowed_next_intents=(
+                Intent.PRODUCT_LIST,
+                Intent.SERVICE_LIST,
+                Intent.CLINIC_INFO,
+            ),
+            topic_sequence=("product_catalog", "service_catalog", "clinic_location"),
+        ),
     ),
     Intent.CHITCHAT: IntentCapability(
         intent=Intent.CHITCHAT,
@@ -78,6 +97,14 @@ INTENT_CAPABILITIES: dict[Intent, IntentCapability] = {
         inheritance_rule=InheritanceRule.NO_INHERIT,
         allowed_reference_modes=_NO_ENTITY_MODES,
         clarification_policy=ClarificationPolicy.NEVER,
+        suggestion_policy=SuggestionPolicy(
+            allowed_next_intents=(
+                Intent.PRODUCT_LIST,
+                Intent.SERVICE_LIST,
+                Intent.CLINIC_INFO,
+            ),
+            topic_sequence=("product_catalog", "service_catalog", "clinic_location"),
+        ),
     ),
     Intent.CLINIC_INFO: IntentCapability(
         intent=Intent.CLINIC_INFO,
@@ -90,6 +117,15 @@ INTENT_CAPABILITIES: dict[Intent, IntentCapability] = {
             allowed_source_types=("clinic_info",),
             authoritative_required=True,
             minimum_items=1,
+        ),
+        suggestion_policy=SuggestionPolicy(
+            allowed_next_intents=(
+                Intent.CLINIC_INFO,
+                Intent.PRODUCT_LIST,
+                Intent.SERVICE_LIST,
+            ),
+            topic_sequence=("clinic_hours", "clinic_contact", "clinic_location"),
+            evidence_required=True,
         ),
     ),
     Intent.FAQ: IntentCapability(
@@ -110,6 +146,23 @@ INTENT_CAPABILITIES: dict[Intent, IntentCapability] = {
             minimum_items=1,
         ),
         persist_to_memory=False,
+        suggestion_policy=SuggestionPolicy(
+            allowed_next_intents=(
+                Intent.FAQ,
+                Intent.PRODUCT_DETAIL,
+                Intent.SERVICE_DETAIL,
+                Intent.CLINIC_INFO,
+            ),
+            topic_sequence=(
+                "price",
+                "duration",
+                "availability",
+                "pain",
+                "safety",
+                "clinic_hours",
+            ),
+            evidence_required=True,
+        ),
     ),
     Intent.PRODUCT_LIST: IntentCapability(
         intent=Intent.PRODUCT_LIST,
@@ -125,6 +178,14 @@ INTENT_CAPABILITIES: dict[Intent, IntentCapability] = {
         evidence_contract=EvidenceContract(
             allowed_source_types=("product",),
             authoritative_required=True,
+        ),
+        suggestion_policy=SuggestionPolicy(
+            allowed_next_intents=(
+                Intent.PRODUCT_LIST,
+                Intent.PRODUCT_DETAIL,
+            ),
+            topic_sequence=("availability", "price_sort", "budget", "detail"),
+            evidence_required=True,
         ),
     ),
     Intent.PRODUCT_DETAIL: IntentCapability(
@@ -142,6 +203,16 @@ INTENT_CAPABILITIES: dict[Intent, IntentCapability] = {
             minimum_items=1,
         ),
         persist_to_memory=True,
+        suggestion_policy=SuggestionPolicy(
+            allowed_next_intents=(
+                Intent.PRODUCT_DETAIL,
+                Intent.FAQ,
+                Intent.CLINIC_INFO,
+            ),
+            topic_sequence=("price", "availability", "usage", "safety", "clinic_hours"),
+            entity_required=True,
+            evidence_required=True,
+        ),
     ),
     Intent.PRODUCT_COMPARE: IntentCapability(
         intent=Intent.PRODUCT_COMPARE,
@@ -161,6 +232,14 @@ INTENT_CAPABILITIES: dict[Intent, IntentCapability] = {
             minimum_items=2,
         ),
         persist_to_memory=True,
+        suggestion_policy=SuggestionPolicy(
+            allowed_next_intents=(
+                Intent.PRODUCT_DETAIL,
+                Intent.PRODUCT_LIST,
+            ),
+            topic_sequence=("availability", "price", "detail"),
+            evidence_required=True,
+        ),
     ),
     Intent.SERVICE_LIST: IntentCapability(
         intent=Intent.SERVICE_LIST,
@@ -176,6 +255,15 @@ INTENT_CAPABILITIES: dict[Intent, IntentCapability] = {
         evidence_contract=EvidenceContract(
             allowed_source_types=("service",),
             authoritative_required=True,
+        ),
+        suggestion_policy=SuggestionPolicy(
+            allowed_next_intents=(
+                Intent.SERVICE_LIST,
+                Intent.SERVICE_DETAIL,
+                Intent.CLINIC_INFO,
+            ),
+            topic_sequence=("price_sort", "duration_sort", "budget", "detail"),
+            evidence_required=True,
         ),
     ),
     Intent.SERVICE_DETAIL: IntentCapability(
@@ -193,6 +281,22 @@ INTENT_CAPABILITIES: dict[Intent, IntentCapability] = {
             minimum_items=1,
         ),
         persist_to_memory=True,
+        suggestion_policy=SuggestionPolicy(
+            allowed_next_intents=(
+                Intent.SERVICE_DETAIL,
+                Intent.FAQ,
+                Intent.CLINIC_INFO,
+            ),
+            topic_sequence=(
+                "price",
+                "duration",
+                "pain",
+                "safety",
+                "clinic_hours",
+            ),
+            entity_required=True,
+            evidence_required=True,
+        ),
     ),
     Intent.UNKNOWN: IntentCapability(
         intent=Intent.UNKNOWN,
@@ -200,6 +304,14 @@ INTENT_CAPABILITIES: dict[Intent, IntentCapability] = {
         inheritance_rule=InheritanceRule.NO_INHERIT,
         allowed_reference_modes=_NO_ENTITY_MODES,
         clarification_policy=ClarificationPolicy.ALWAYS,
+        suggestion_policy=SuggestionPolicy(
+            allowed_next_intents=(
+                Intent.PRODUCT_LIST,
+                Intent.SERVICE_LIST,
+                Intent.CLINIC_INFO,
+            ),
+            topic_sequence=("product_catalog", "service_catalog", "clinic_location"),
+        ),
     ),
 }
 
@@ -246,4 +358,12 @@ def validate_intent_registry() -> None:
         ):
             raise RuntimeError(
                 f"{intent.value} compare contract must require at least two evidence items"
+            )
+        unknown_next_intents = (
+            set(capability.suggestion_policy.allowed_next_intents) - set(Intent)
+        )
+        if unknown_next_intents:
+            raise RuntimeError(
+                f"{intent.value} registers unknown suggestion intents: "
+                f"{sorted(str(item) for item in unknown_next_intents)}"
             )

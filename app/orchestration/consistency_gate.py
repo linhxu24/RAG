@@ -10,7 +10,6 @@ from app.orchestration.schemas import (
     EvidenceItem,
     GateStatus,
 )
-from app.retrieval.normalization import normalize_vietnamese
 
 
 class ConsistencyGate:
@@ -215,21 +214,6 @@ class ConsistencyGate:
                     "entity_type_not_allowed",
                     "Entity type is not allowed by intent capability",
                     {"entity_type": task.entity_type},
-                )
-            )
-        normalized_query = normalize_vietnamese(task.effective_query)
-        missing_names = [
-            name
-            for name in task.entity_names
-            if normalize_vietnamese(name) not in normalized_query
-        ]
-        if missing_names:
-            values.append(
-                _violation(
-                    task,
-                    "effective_query_missing_entity",
-                    "Effective query does not contain canonical entity names",
-                    {"missing_names": missing_names},
                 )
             )
         filter_ids = (

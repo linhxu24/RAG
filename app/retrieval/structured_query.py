@@ -12,6 +12,7 @@ from app.db.models import (
     ProductAlias,
     ProductCategory,
     Service,
+    ServiceAlias,
     ServiceCategory,
 )
 from app.ingestion.table_processor import parse_decimal
@@ -514,10 +515,18 @@ def _product_ids(session: Session, normalized_query: str) -> list[str]:
 
 def _service_ids(session: Session, normalized_query: str) -> list[str]:
     records = session.scalars(select(Service).where(Service.status == "active")).all()
+    aliases = session.scalars(select(ServiceAlias)).all()
+    alias_by_service: dict[object, list[str]] = {}
+    for alias in aliases:
+        alias_by_service.setdefault(alias.service_id, []).append(alias.normalized_alias)
     return [
         str(service.service_id)
         for service in records
         if normalize_vietnamese(service.name) in normalized_query
+        or any(
+            alias and alias in normalized_query
+            for alias in alias_by_service.get(service.service_id, [])
+        )
     ]
 
 

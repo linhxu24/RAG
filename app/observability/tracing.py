@@ -25,7 +25,36 @@ def json_summary(value: Any, max_chars: int = 4_000) -> dict[str, Any]:
     text = str(result)
     if len(text) <= max_chars:
         return result
+    preserved = _preserve_eval_fields(result)
+    if preserved:
+        preserved["summary"] = text[:max_chars]
+        preserved["truncated"] = True
+        return preserved
     return {"summary": text[:max_chars], "truncated": True}
+
+
+def _preserve_eval_fields(result: dict[str, Any]) -> dict[str, Any]:
+    preserved: dict[str, Any] = {}
+    for key in (
+        "results",
+        "source_ids",
+        "before_ids",
+        "after_ids",
+        "intent",
+        "mode",
+        "source_types",
+        "tasks",
+    ):
+        if key not in result:
+            continue
+        value = result[key]
+        if isinstance(value, list):
+            preserved[key] = value[:50]
+            if len(value) > 50:
+                preserved[f"{key}_truncated_count"] = len(value) - 50
+        else:
+            preserved[key] = value
+    return preserved
 
 
 @dataclass

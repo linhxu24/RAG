@@ -25,6 +25,7 @@ from app.generation.schemas import (
     SynthesisOutput,
 )
 from app.generation.validator import ResponseValidationError, ResponseValidator
+from app.orchestration.intent_registry import EntityScope, IntentCapability, capability_for
 
 
 class GenerationValidationError(ResponseValidationError):
@@ -382,8 +383,8 @@ class GroundedGenerator:
             for item in selected
             if item["source_type"] in {"product", "service", "faq", "clinic_info"}
         ]
-        faq_task = any(
-            task.get("intent") == Intent.FAQ.value
+        disclaimer_task = any(
+            self._intent_requires_medical_disclaimer(task.get("intent"))
             for task in context.get("tasks", [])
             if isinstance(task, dict)
         )
@@ -400,8 +401,8 @@ class GroundedGenerator:
             safety=SafetyInfo(
                 medical_disclaimer_required=(
                     synthesis.medical_disclaimer_required
-                    or intent == Intent.FAQ
-                    or faq_task
+                    or self._intent_requires_medical_disclaimer(intent)
+                    or disclaimer_task
                 ),
                 needs_human_support=synthesis.needs_human_support,
             ),
@@ -422,6 +423,7 @@ class GroundedGenerator:
         clarification_message: str | None = None,
     ) -> GeneratedResponse:
         items = context.get("items", [])
+        capability = capability_for(intent)
         if clarification_reason:
             messages = {
                 "structured_entity_not_found": (
@@ -446,30 +448,19 @@ class GroundedGenerator:
                     "Bạn vui lòng cung cấp thêm thông tin để tôi truy vấn chính xác.",
                 ),
             )
-        if intent == Intent.GREETING:
+        simple_response = self._simple_direct_response(intent)
+        if simple_response is not None:
+            answer_type, text = simple_response
             return self._simple(
                 intent,
                 confidence,
-                "greeting",
-                "Xin chào! Tôi có thể hỗ trợ bạn về sản phẩm, dịch vụ, FAQ "
-                "hoặc thông tin phòng khám.",
+                answer_type,
+                text,
             )
-        if intent == Intent.CHITCHAT:
-            return self._simple(
-                intent,
-                confidence,
-                "chitchat",
-                "Cảm ơn bạn. Tôi luôn sẵn sàng hỗ trợ các câu hỏi về nha khoa và phòng khám.",
-            )
-        if intent == Intent.UNKNOWN:
-            return self._simple(
-                intent,
-                confidence,
-                "clarification",
-                "Mình chưa hiểu rõ bạn muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin "
-                "phòng khám. Bạn có thể hỏi cụ thể hơn không?",
-            )
-        if intent == Intent.PRODUCT_COMPARE and len(items) < 2:
+        if self._uses_product_compare_format(capability) and len(items) < max(
+            capability.evidence_contract.minimum_items,
+            2,
+        ):
             return self._simple(
                 intent,
                 confidence,
@@ -478,57 +469,25 @@ class GroundedGenerator:
                 "Bạn vui lòng nêu rõ tên các sản phẩm.",
             )
         if not items:
-            if intent == Intent.PRODUCT_LIST:
-                return self._simple(
-                    intent,
-                    confidence,
-                    "fallback",
-                    "Tôi chưa tìm thấy sản phẩm nào đáp ứng các điều kiện bạn yêu cầu.",
-                )
-            if intent == Intent.SERVICE_LIST:
-                return self._simple(
-                    intent,
-                    confidence,
-                    "fallback",
-                    "Tôi chưa tìm thấy dịch vụ nào đáp ứng các điều kiện bạn yêu cầu.",
-                )
             return self._simple(
                 intent,
                 confidence,
                 "fallback",
-                "Hiện tại tôi chưa có đủ thông tin trong dữ liệu của phòng khám.",
+                self._empty_fallback_text(capability),
             )
 
-        if intent == Intent.FAQ and items[0]["source_type"] == "faq":
-            text = self._format_faq(items[0])
-        elif intent == Intent.PRODUCT_LIST:
-            text = self._format_product_list(items)
-        elif intent == Intent.SERVICE_LIST:
-            text = self._format_service_list(items)
-        elif intent == Intent.PRODUCT_DETAIL and items[0]["source_type"] == "product":
-            product_items = [item for item in items if item["source_type"] == "product"]
-            text = (
-                self._format_product_detail(product_items[0])
-                if len(product_items) == 1
-                else self._format_product_list(product_items)
-            )
-        elif intent == Intent.SERVICE_DETAIL and items[0]["source_type"] == "service":
-            service_items = [item for item in items if item["source_type"] == "service"]
-            text = (
-                self._format_service_detail(service_items[0])
-                if len(service_items) == 1
-                else self._format_service_list(service_items)
-            )
-        elif intent == Intent.PRODUCT_COMPARE:
-            text = self._format_product_compare(items)
-        else:
-            text = "\n".join(item["text"] for item in items)
+        text = self._format_direct_text(items, capability)
 
         result_items = [self._result_item(item) for item in items]
         entities = [
             EntityReference(
                 type=self._entity_type(item["source_type"]),
-                name=str(item.get("raw_json", {}).get("name") or item["source_type"]),
+                name=str(
+                    item.get("raw_json", {}).get("name")
+                    or item.get("raw_json", {}).get("question")
+                    or item.get("raw_json", {}).get("key")
+                    or item["source_type"]
+                ),
                 matched_id=item["source_id"],
             )
             for item in items
@@ -553,7 +512,8 @@ class GroundedGenerator:
                 ],
             ),
             safety=SafetyInfo(
-                medical_disclaimer_required=intent == Intent.FAQ,
+                medical_disclaimer_required="faq"
+                in capability.evidence_contract.allowed_source_types,
                 needs_human_support=False,
             ),
         )
@@ -601,25 +561,130 @@ class GroundedGenerator:
         return response
 
     @staticmethod
+    def _simple_direct_response(intent: Intent) -> tuple[str, str] | None:
+        responses = {
+            Intent.GREETING: (
+                "greeting",
+                "Xin chào! Tôi có thể hỗ trợ bạn về sản phẩm, dịch vụ, FAQ "
+                "hoặc thông tin phòng khám.",
+            ),
+            Intent.CHITCHAT: (
+                "chitchat",
+                "Cảm ơn bạn. Tôi luôn sẵn sàng hỗ trợ các câu hỏi về nha khoa "
+                "và phòng khám.",
+            ),
+            Intent.UNKNOWN: (
+                "clarification",
+                "Mình chưa hiểu rõ bạn muốn hỏi về sản phẩm, dịch vụ, FAQ hay "
+                "thông tin phòng khám. Bạn có thể hỏi cụ thể hơn không?",
+            ),
+        }
+        return responses.get(intent)
+
+    @staticmethod
+    def _intent_requires_medical_disclaimer(intent: Intent | object) -> bool:
+        try:
+            capability = capability_for(
+                intent if isinstance(intent, Intent) else Intent(str(intent))
+            )
+        except ValueError:
+            return False
+        return "faq" in capability.evidence_contract.allowed_source_types
+
+    @staticmethod
+    def _empty_fallback_text(capability: IntentCapability) -> str:
+        if capability.entity_scope == EntityScope.FILTER_ONLY:
+            messages = {
+                "product": (
+                    "Tôi chưa tìm thấy sản phẩm nào đáp ứng các điều kiện bạn yêu cầu."
+                ),
+                "service": (
+                    "Tôi chưa tìm thấy dịch vụ nào đáp ứng các điều kiện bạn yêu cầu."
+                ),
+            }
+            message = messages.get(capability.entity_domain)
+            if message:
+                return message
+        return "Hiện tại tôi chưa có đủ thông tin trong dữ liệu của phòng khám."
+
+    @classmethod
+    def _format_direct_text(
+        cls,
+        items: list[dict[str, Any]],
+        capability: IntentCapability,
+    ) -> str:
+        if cls._uses_product_compare_format(capability):
+            # Product comparison has a side-by-side output shape; source_type alone
+            # cannot infer that presentation without the capability contract.
+            return cls._format_product_compare(items)
+
+        source_type = cls._preferred_source_type(items, capability)
+        source_items = [
+            item for item in items if item.get("source_type") == source_type
+        ]
+        if not source_items:
+            return "\n".join(item["text"] for item in items)
+
+        single_formatters = {
+            "faq": cls._format_faq,
+        }
+        single_formatter = single_formatters.get(source_type)
+        if single_formatter is not None:
+            return single_formatter(source_items[0])
+
+        detail_formatters = {
+            "product": cls._format_product_detail,
+            "service": cls._format_service_detail,
+        }
+        if capability.entity_scope == EntityScope.EXACTLY_ONE and len(source_items) == 1:
+            detail_formatter = detail_formatters.get(source_type)
+            if detail_formatter is not None:
+                return detail_formatter(source_items[0])
+
+        list_formatters = {
+            "product": cls._format_product_list,
+            "service": cls._format_service_list,
+        }
+        list_formatter = list_formatters.get(source_type)
+        if list_formatter is not None:
+            return list_formatter(source_items)
+        return "\n".join(item["text"] for item in items)
+
+    @staticmethod
+    def _preferred_source_type(
+        items: list[dict[str, Any]],
+        capability: IntentCapability,
+    ) -> str:
+        for source_type in capability.evidence_contract.allowed_source_types:
+            if any(item.get("source_type") == source_type for item in items):
+                return source_type
+        return str(items[0].get("source_type") or "")
+
+    @staticmethod
+    def _uses_product_compare_format(capability: IntentCapability) -> bool:
+        return (
+            capability.entity_scope == EntityScope.TWO_OR_MORE
+            and capability.entity_domain == "product"
+        )
+
+    @staticmethod
     def _focused_fallback_context(
         intent: Intent,
         context: dict[str, Any],
     ) -> dict[str, Any]:
         items = list(context.get("items", []))
+        capability = capability_for(intent)
         preferred_types: set[str] | None = None
         limit: int | None = None
-        if intent == Intent.PRODUCT_DETAIL:
-            preferred_types = {"product"}
-            limit = 1
-        elif intent == Intent.SERVICE_DETAIL:
-            preferred_types = {"service"}
-            limit = 1
-        elif intent == Intent.PRODUCT_COMPARE:
-            preferred_types = {"product"}
-            limit = 2
-        elif intent == Intent.FAQ:
+        source_types = set(capability.evidence_contract.allowed_source_types)
+        if "faq" in source_types:
             preferred_types = {"faq"}
+        elif source_types:
+            preferred_types = source_types
+        if capability.entity_scope == EntityScope.EXACTLY_ONE:
             limit = 1
+        elif capability.entity_scope == EntityScope.TWO_OR_MORE:
+            limit = max(capability.evidence_contract.minimum_items, 2)
 
         if preferred_types:
             focused = [item for item in items if item["source_type"] in preferred_types]

@@ -114,6 +114,7 @@ def test_router_evaluation_uses_known_business_entities():
 
 def test_optional_llm_router_uses_validated_json_output():
     ollama = AsyncMock()
+    settings = Settings(enable_llm_router=True)
     ollama.generate.return_value = OllamaResponse(
         text=json.dumps(
             {
@@ -131,7 +132,7 @@ def test_optional_llm_router_uses_validated_json_output():
     result = asyncio.run(
         IntentRouter().route_with_optional_llm(
             "Tư vấn thêm về sức khỏe răng miệng",
-            Settings(enable_llm_router=True),
+            settings,
             ollama,
         )
     )
@@ -142,7 +143,10 @@ def test_optional_llm_router_uses_validated_json_output():
     assert result.llm_prompt_chars is not None
     assert result.llm_metadata["model"] == "router"
     ollama.generate.assert_awaited_once()
-    assert ollama.generate.await_args.kwargs["timeout_seconds"] == 0
+    assert ollama.generate.await_args.kwargs["timeout_seconds"] == (
+        settings.llm_router_timeout_seconds
+    )
+    assert ollama.generate.await_args.kwargs["timeout_seconds"] > 0
 
 
 def test_optional_llm_router_falls_back_and_opens_circuit():

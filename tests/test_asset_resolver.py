@@ -137,6 +137,40 @@ def test_renderer_resolves_assets_from_structured_list_items(tmp_path):
     ]
 
 
+def test_renderer_resolves_asset_tokens_from_item_data(tmp_path):
+    local_file = tmp_path / "image.png"
+    local_file.write_bytes(b"image")
+    asset_id = uuid.uuid4()
+    asset = SimpleNamespace(
+        asset_id=asset_id,
+        asset_token="[asset:table_row_hash]",
+        stable_asset_key="table_row_hash",
+        public_url="/assets/doc/table-row.png",
+        local_path=str(local_file),
+        asset_type="table_image",
+    )
+    response = GeneratedResponse(
+        intent=Intent.FAQ,
+        confidence=0.9,
+        answer_type="rag",
+        result=ResultBody(
+            text="Theo dữ liệu hiện có.",
+            items=[
+                ResultItem(
+                    type="table_row",
+                    id=str(uuid.uuid4()),
+                    data={"image": "[asset:table_row_hash]"},
+                )
+            ],
+        ),
+    )
+
+    rendered = ResponseRenderer().resolve_assets(FakeSession([asset]), response)
+
+    assert [item["asset_id"] for item in rendered.result.assets] == [str(asset_id)]
+    assert rendered.result.missing_assets == []
+
+
 def test_asset_masking_replaces_docling_placeholder_in_position():
     token = "[asset:doc_001_img_0001]"
     text = mask_asset_positions("Trước ảnh\n<!-- image -->\nSau ảnh", [token])

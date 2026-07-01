@@ -1,0 +1,1585 @@
+{
+  "run_id": "20260701085542",
+  "scenario_file": "eval_datasets/dental_conversation_scenarios_v2.json",
+  "backend_url": "http://127.0.0.1:8001",
+  "summary": {
+    "total_scenarios": 5,
+    "scenarios_passed": 0,
+    "scenarios_failed": 5,
+    "total_turns": 22,
+    "turns_passed": 5,
+    "turns_failed": 17,
+    "intent_accuracy": 0.3636,
+    "entity_accuracy": 0.2,
+    "follow_up_accuracy": 0.0,
+    "multi_task_accuracy": 0.0,
+    "degraded_rate": 0.4545,
+    "avg_latency_ms": 42611,
+    "p95_latency_ms": 60124,
+    "normalize_check_accuracy": 1.0,
+    "entity_switch_accuracy": 0.5,
+    "clarification_flow_accuracy": null,
+    "gate_regression_clean": true
+  },
+  "bug_regression": {
+    "effective_query_missing_entity_removed": {
+      "description": "Check rằng bug cũ không còn xuất hiện",
+      "method": "Scan toàn bộ violations trong debug output — không được có code = effective_query_missing_entity",
+      "result": "pass",
+      "occurrences": 0,
+      "affected_turns": []
+    },
+    "normalize_unified": {
+      "description": "normalize_for_match hoạt động nhất quán",
+      "method": "Scenario 1 turns 1-3: normalize/inheritance checks must pass for case/diacritic variants",
+      "result": "fail",
+      "evidence": "pass, fail"
+    },
+    "entity_stale_binding_fixed": {
+      "description": "Không có stale entity sau entity switch",
+      "method": "Scenario 2 turns 3-5: entity switch/no_stale checks must pass",
+      "result": "fail",
+      "evidence": "pass, fail, fail"
+    }
+  },
+  "scenarios": [
+    {
+      "scenario_key": "entity_resolve_after_normalize_fix",
+      "title": "Entity resolve với tên có dấu và viết hoa",
+      "passed": false,
+      "scenario_pass_rate": 0.25,
+      "follow_up_accuracy": 0.0,
+      "multi_task_accuracy": 0.0,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Cho tôi thông tin về Tẩy Trắng Răng Tại Phòng Khám",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 50626,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Tẩy trắng răng tại phòng khám là dịch vụ thuộc danh mục làm đẹp nha khoa (COSMETIC). Dịch vụ này giúp làm sáng màu răng bằng vật liệu chuyên dụng trong điều kiện kiểm soát tại phòng khám. Kết quả thay đổi màu răng có thể khác nhau tùy theo cơ địa và thói quen ăn uống của mỗi người. Thời gian thực hiện dịch vụ là khoảng 90 phút với giá 2,500,000 VND.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": [],
+          "test_target": "normalize_for_match",
+          "v2_checks": {
+            "normalize_resolved": "pass",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "resolved",
+            "resolution_source": "database",
+            "gate_status": "pass",
+            "entity_names": [
+              "Tẩy trắng răng tại phòng khám"
+            ],
+            "resolved_ids": [
+              "cc5bb9a0-612e-4d32-965f-9a622014adf7"
+            ],
+            "query_rewrite": {
+              "original_query": "Cho tôi thông tin về Tẩy Trắng Răng Tại Phòng Khám",
+              "pipeline_query": "Cho tôi thông tin về Tẩy Trắng Răng Tại Phòng Khám",
+              "enabled": true,
+              "skipped": false,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "is_standalone": true
+            },
+            "violations": []
+          }
+        },
+        {
+          "turn_index": 1,
+          "query": "Chi phí bao nhiêu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 13689,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Bạn đang hỏi dịch vụ nào? Vui lòng cho tôi tên cụ thể.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "entity_present: missing ['Tẩy trắng răng tại phòng khám']",
+            "follow_up_memory_used: expected prior entity in response without re-mention.",
+            "entity_inherited_not_reresolved: failed for test_target=entity_inheritance_after_resolve"
+          ],
+          "test_target": "entity_inheritance_after_resolve",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "fail",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "missing_context",
+            "resolution_source": "database",
+            "gate_status": "clarify",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {
+              "original_query": "Chi phí bao nhiêu?",
+              "pipeline_query": "Chi phí bao nhiêu?",
+              "enabled": true,
+              "skipped": false,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "is_standalone": true
+            },
+            "violations": [
+              {
+                "code": "entity_cardinality_mismatch",
+                "message": "Detail task requires exactly one canonical entity and ID",
+                "task_id": "t1",
+                "details": {
+                  "entity_count": 0,
+                  "resolved_id_count": 0
+                }
+              }
+            ]
+          }
+        },
+        {
+          "turn_index": 2,
+          "query": "TẨY TRẮNG RĂNG TẠI PHÒNG KHÁM có đau không?",
+          "expected_intent": "FAQ",
+          "actual_intent": null,
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 60124,
+          "http_status": null,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "timeout: Request exceeded 60 seconds."
+          ],
+          "error_type": "timeout",
+          "error_message": "Request exceeded 60 seconds.",
+          "timeout": true,
+          "test_target": "normalize_case_insensitive",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [
+            "debug field absent — enable debug mode in backend"
+          ],
+          "debug_snapshot": {
+            "resolution_status": "unknown",
+            "resolution_source": "unknown",
+            "gate_status": "unknown",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {},
+            "violations": []
+          }
+        },
+        {
+          "turn_index": 3,
+          "query": "Sau khi làm xong cần kiêng gì không?",
+          "expected_intent": "FAQ",
+          "actual_intent": null,
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 60094,
+          "http_status": null,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "timeout: Request exceeded 60 seconds."
+          ],
+          "error_type": "timeout",
+          "error_message": "Request exceeded 60 seconds.",
+          "timeout": true,
+          "test_target": "deep_follow_up_memory",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [
+            "debug field absent — enable debug mode in backend"
+          ],
+          "debug_snapshot": {
+            "resolution_status": "unknown",
+            "resolution_source": "unknown",
+            "gate_status": "unknown",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {},
+            "violations": []
+          }
+        }
+      ]
+    },
+    {
+      "scenario_key": "entity_switch_mid_conversation",
+      "title": "Chuyển entity giữa chừng rồi quay lại",
+      "passed": false,
+      "scenario_pass_rate": 0.2,
+      "follow_up_accuracy": 0.0,
+      "multi_task_accuracy": 0.0,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "AquaJet Mini Water Flosser giá bao nhiêu?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": null,
+          "expected_entities": [
+            "AquaJet Mini Water Flosser"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 60186,
+          "http_status": null,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "timeout: Request exceeded 60 seconds."
+          ],
+          "error_type": "timeout",
+          "error_message": "Request exceeded 60 seconds.",
+          "timeout": true,
+          "test_target": "initial_entity_resolve",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [
+            "debug field absent — enable debug mode in backend"
+          ],
+          "debug_snapshot": {
+            "resolution_status": "unknown",
+            "resolution_source": "unknown",
+            "gate_status": "unknown",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {},
+            "violations": []
+          }
+        },
+        {
+          "turn_index": 1,
+          "query": "Còn hàng không?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": "UNKNOWN",
+          "expected_entities": [
+            "AquaJet Mini Water Flosser"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 12381,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Bạn vui lòng cho biết cụ thể muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin phòng khám.",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "intent_match: expected PRODUCT_DETAIL, got UNKNOWN",
+            "entity_present: missing ['AquaJet Mini Water Flosser']",
+            "follow_up_memory_used: expected prior entity in response without re-mention.",
+            "entity_inherited_not_reresolved: failed for test_target=follow_up_same_entity"
+          ],
+          "test_target": "follow_up_same_entity",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "fail",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "not_applicable",
+            "resolution_source": "database",
+            "gate_status": "clarify",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {
+              "original_query": "Còn hàng không?",
+              "pipeline_query": "Còn hàng không?",
+              "enabled": true,
+              "skipped": false,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "is_standalone": true
+            },
+            "violations": [
+              {
+                "code": "task_requires_clarification",
+                "message": "Bạn vui lòng cho biết cụ thể muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin phòng khám.",
+                "task_id": "t1",
+                "details": {}
+              }
+            ]
+          }
+        },
+        {
+          "turn_index": 2,
+          "query": "Cấy ghép Implant đơn lẻ thì sao, giá bao nhiêu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Cấy ghép Implant đơn lẻ"
+          ],
+          "found_entities": [
+            "Cấy ghép Implant đơn lẻ"
+          ],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 8998,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Cấy ghép Implant đơn lẻ, thường kéo dài khoảng 120 phút, chi phí là 18.000.000 VND, thuộc nhóm IMPLANT. Thay thế một răng mất bằng trụ Implant và phục hình phía trên sau khi đủ điều kiện. Cần thăm khám, chụp phim và đánh giá sức khỏe răng miệng trước khi thực hiện.\n\n- Bạn vui lòng cho biết cụ thể muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin phòng khám.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": [],
+          "test_target": "entity_switch_to_new",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "pass",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "resolved",
+            "resolution_source": "database",
+            "gate_status": "clarify",
+            "entity_names": [
+              "Cấy ghép Implant đơn lẻ"
+            ],
+            "resolved_ids": [
+              "483ffdd3-bc5a-4d30-a256-f5460fb9dd81"
+            ],
+            "query_rewrite": {
+              "original_query": "Cấy ghép Implant đơn lẻ thì sao, giá bao nhiêu?",
+              "pipeline_query": "Cấy ghép Implant đơn lẻ thì sao, giá bao nhiêu?",
+              "enabled": true,
+              "skipped": false,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "is_standalone": true
+            },
+            "violations": [
+              {
+                "code": "task_requires_clarification",
+                "message": "Bạn vui lòng cho biết cụ thể muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin phòng khám.",
+                "task_id": "t2",
+                "details": {}
+              }
+            ]
+          }
+        },
+        {
+          "turn_index": 3,
+          "query": "Mất bao lâu?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Cấy ghép Implant đơn lẻ"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 8755,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Bạn đang hỏi dịch vụ nào? Vui lòng cho tôi tên cụ thể.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "entity_present: missing ['Cấy ghép Implant đơn lẻ']",
+            "follow_up_memory_used: expected prior entity in response without re-mention.",
+            "no_stale_entity: failed for test_target=follow_up_after_switch"
+          ],
+          "test_target": "follow_up_after_switch",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "fail",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "missing_context",
+            "resolution_source": "database",
+            "gate_status": "clarify",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {
+              "original_query": "Mất bao lâu?",
+              "pipeline_query": "Mất bao lâu?",
+              "enabled": true,
+              "skipped": false,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "is_standalone": true
+            },
+            "violations": [
+              {
+                "code": "entity_cardinality_mismatch",
+                "message": "Detail task requires exactly one canonical entity and ID",
+                "task_id": "t1",
+                "details": {
+                  "entity_count": 0,
+                  "resolved_id_count": 0
+                }
+              }
+            ]
+          }
+        },
+        {
+          "turn_index": 4,
+          "query": "Quay lại AquaJet, nó dùng được bao lâu?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": "UNKNOWN",
+          "expected_entities": [
+            "AquaJet Mini Water Flosser"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 8541,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Bạn vui lòng cho biết cụ thể muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin phòng khám.",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "intent_match: expected PRODUCT_DETAIL, got UNKNOWN",
+            "entity_present: missing ['AquaJet Mini Water Flosser']",
+            "no_stale_entity: failed for test_target=switch_back_to_first_entity"
+          ],
+          "test_target": "switch_back_to_first_entity",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "fail",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "not_applicable",
+            "resolution_source": "database",
+            "gate_status": "clarify",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {
+              "original_query": "Quay lại AquaJet, nó dùng được bao lâu?",
+              "pipeline_query": "Quay lại AquaJet, nó dùng được bao lâu?",
+              "enabled": true,
+              "skipped": false,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "is_standalone": true
+            },
+            "violations": [
+              {
+                "code": "task_requires_clarification",
+                "message": "Bạn vui lòng cho biết cụ thể muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin phòng khám.",
+                "task_id": "t1",
+                "details": {}
+              },
+              {
+                "code": "entity_cardinality_mismatch",
+                "message": "Detail task requires exactly one canonical entity and ID",
+                "task_id": "t2",
+                "details": {
+                  "entity_count": 0,
+                  "resolved_id_count": 0
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "scenario_key": "consistency_gate_cardinality",
+      "title": "Kiểm tra consistency gate cardinality sau fix",
+      "passed": false,
+      "scenario_pass_rate": 0.25,
+      "follow_up_accuracy": 0.0,
+      "multi_task_accuracy": 0.0,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "So sánh AquaJet Mini Water Flosser với SilkLine Waxed Dental Floss",
+          "expected_intent": "PRODUCT_COMPARE",
+          "actual_intent": null,
+          "expected_entities": [
+            "AquaJet Mini Water Flosser",
+            "SilkLine Waxed Dental Floss"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 60037,
+          "http_status": null,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "timeout: Request exceeded 60 seconds."
+          ],
+          "error_type": "timeout",
+          "error_message": "Request exceeded 60 seconds.",
+          "timeout": true,
+          "test_target": "compare_cardinality_two_entities",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [
+            "debug field absent — enable debug mode in backend"
+          ],
+          "debug_snapshot": {
+            "resolution_status": "unknown",
+            "resolution_source": "unknown",
+            "gate_status": "unknown",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {},
+            "violations": []
+          }
+        },
+        {
+          "turn_index": 1,
+          "query": "Loại nào phù hợp hơn cho người niềng răng?",
+          "expected_intent": "FAQ",
+          "actual_intent": null,
+          "expected_entities": [
+            "AquaJet Mini Water Flosser",
+            "SilkLine Waxed Dental Floss"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 60071,
+          "http_status": null,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "timeout: Request exceeded 60 seconds."
+          ],
+          "error_type": "timeout",
+          "error_message": "Request exceeded 60 seconds.",
+          "timeout": true,
+          "test_target": "faq_after_compare_inherits_both_entities",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [
+            "debug field absent — enable debug mode in backend"
+          ],
+          "debug_snapshot": {
+            "resolution_status": "unknown",
+            "resolution_source": "unknown",
+            "gate_status": "unknown",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {},
+            "violations": []
+          }
+        },
+        {
+          "turn_index": 2,
+          "query": "AquaJet giá bao nhiêu?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": "PRODUCT_DETAIL",
+          "expected_entities": [
+            "AquaJet Mini Water Flosser"
+          ],
+          "found_entities": [
+            "AquaJet Mini Water Flosser"
+          ],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 53814,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Máy tăm nước AquaJet Mini có giá là 1.250.000 VND.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": true,
+          "failure_reasons": [],
+          "test_target": "detail_after_compare_one_entity",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "pass",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "resolved",
+            "resolution_source": "database",
+            "gate_status": "pass",
+            "entity_names": [
+              "AquaJet Mini Water Flosser"
+            ],
+            "resolved_ids": [
+              "ba9774ae-1a63-41d9-8995-b6c462c7e7be"
+            ],
+            "query_rewrite": {
+              "original_query": "AquaJet giá bao nhiêu?",
+              "pipeline_query": "AquaJet giá bao nhiêu?",
+              "enabled": true,
+              "skipped": false,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "is_standalone": true
+            },
+            "violations": []
+          }
+        },
+        {
+          "turn_index": 3,
+          "query": "Còn loại kia thì sao?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": null,
+          "expected_entities": [
+            "SilkLine Waxed Dental Floss"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 60054,
+          "http_status": null,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "timeout: Request exceeded 60 seconds."
+          ],
+          "error_type": "timeout",
+          "error_message": "Request exceeded 60 seconds.",
+          "timeout": true,
+          "test_target": "implicit_reference_to_second_entity",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [
+            "debug field absent — enable debug mode in backend"
+          ],
+          "debug_snapshot": {
+            "resolution_status": "unknown",
+            "resolution_source": "unknown",
+            "gate_status": "unknown",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {},
+            "violations": []
+          }
+        }
+      ]
+    },
+    {
+      "scenario_key": "multi_task_normalize_fix",
+      "title": "Multi-task với entity tiếng Việt có dấu",
+      "passed": false,
+      "scenario_pass_rate": 0.25,
+      "follow_up_accuracy": 0.0,
+      "multi_task_accuracy": 0.0,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Nhổ răng khôn giá bao nhiêu và có cần nhịn ăn trước không?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": null,
+          "expected_entities": [
+            "Nhổ răng khôn"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": true,
+          "latency_ms": 60064,
+          "http_status": null,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "timeout: Request exceeded 60 seconds."
+          ],
+          "error_type": "timeout",
+          "error_message": "Request exceeded 60 seconds.",
+          "timeout": true,
+          "test_target": "multi_task_service_detail_plus_faq",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [
+            "debug field absent — enable debug mode in backend"
+          ],
+          "debug_snapshot": {
+            "resolution_status": "unknown",
+            "resolution_source": "unknown",
+            "gate_status": "unknown",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {},
+            "violations": []
+          }
+        },
+        {
+          "turn_index": 1,
+          "query": "Sau khi nhổ thì sưng mấy ngày?",
+          "expected_intent": "FAQ",
+          "actual_intent": null,
+          "expected_entities": [
+            "Nhổ răng khôn"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 60086,
+          "http_status": null,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "timeout: Request exceeded 60 seconds."
+          ],
+          "error_type": "timeout",
+          "error_message": "Request exceeded 60 seconds.",
+          "timeout": true,
+          "test_target": "follow_up_after_multi_task",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [
+            "debug field absent — enable debug mode in backend"
+          ],
+          "debug_snapshot": {
+            "resolution_status": "unknown",
+            "resolution_source": "unknown",
+            "gate_status": "unknown",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {},
+            "violations": []
+          }
+        },
+        {
+          "turn_index": 2,
+          "query": "Phòng khám mở cửa mấy giờ?",
+          "expected_intent": "CLINIC_INFO",
+          "actual_intent": "CLINIC_INFO",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 60075,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Phòng khám của chúng tôi mở cửa từ 8:00 đến 12:00 vào buổi sáng và từ 13:00 đến 17:00 vào buổi chiều.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": [],
+          "test_target": "intent_switch_no_entity_after_entity_session",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "pass",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "not_applicable",
+            "resolution_source": "database",
+            "gate_status": "pass",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {
+              "original_query": "Phòng khám mở cửa mấy giờ?",
+              "pipeline_query": "Phòng khám mở cửa mấy giờ?",
+              "enabled": true,
+              "skipped": false,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "is_standalone": true
+            },
+            "violations": []
+          }
+        },
+        {
+          "turn_index": 3,
+          "query": "Vậy tôi đặt lịch nhổ răng khôn được không?",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": "SERVICE_DETAIL",
+          "expected_entities": [
+            "Nhổ răng khôn"
+          ],
+          "found_entities": [
+            "Nhổ răng khôn"
+          ],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 50001,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Bạn có thể đặt lịch nhổ răng khôn tại phòng khám của chúng tôi. Quy trình này bao gồm thăm khám và chụp phim để đánh giá tình trạng răng trước khi quyết định thực hiện. Thời gian cho mỗi ca nhổ răng khôn là khoảng 60 phút với chi phí là 2,500,000 VND.",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "pass",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "pass"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "follow_up_memory_used: expected prior entity in response without re-mention.",
+            "entity_survives_no_entity_turn: failed for test_target=re_reference_after_clinic_info_turn"
+          ],
+          "test_target": "re_reference_after_clinic_info_turn",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "fail",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "resolved",
+            "resolution_source": "database",
+            "gate_status": "pass",
+            "entity_names": [
+              "Nhổ răng khôn"
+            ],
+            "resolved_ids": [
+              "f49c765a-4142-4a16-9bbc-e5eb0b0e1006"
+            ],
+            "query_rewrite": {
+              "original_query": "Vậy tôi đặt lịch nhổ răng khôn được không?",
+              "pipeline_query": "Vậy tôi đặt lịch nhổ răng khôn được không?",
+              "enabled": true,
+              "skipped": false,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "is_standalone": true
+            },
+            "violations": []
+          }
+        }
+      ]
+    },
+    {
+      "scenario_key": "not_found_and_clarification_flow",
+      "title": "Entity không tìm thấy rồi làm rõ",
+      "passed": false,
+      "scenario_pass_rate": 0.2,
+      "follow_up_accuracy": 0.0,
+      "multi_task_accuracy": 0.0,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Cho tôi xem máy tăm nước mini",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": null,
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 60058,
+          "http_status": null,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "timeout: Request exceeded 60 seconds."
+          ],
+          "error_type": "timeout",
+          "error_message": "Request exceeded 60 seconds.",
+          "timeout": true,
+          "test_target": "ambiguous_entity_triggers_clarification",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [
+            "debug field absent — enable debug mode in backend"
+          ],
+          "debug_snapshot": {
+            "resolution_status": "unknown",
+            "resolution_source": "unknown",
+            "gate_status": "unknown",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {},
+            "violations": []
+          }
+        },
+        {
+          "turn_index": 1,
+          "query": "AquaJet Mini Water Flosser",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": null,
+          "expected_entities": [
+            "AquaJet Mini Water Flosser"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 60062,
+          "http_status": null,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "timeout: Request exceeded 60 seconds."
+          ],
+          "error_type": "timeout",
+          "error_message": "Request exceeded 60 seconds.",
+          "timeout": true,
+          "test_target": "user_provides_exact_name_after_clarification",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [
+            "debug field absent — enable debug mode in backend"
+          ],
+          "debug_snapshot": {
+            "resolution_status": "unknown",
+            "resolution_source": "unknown",
+            "gate_status": "unknown",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {},
+            "violations": []
+          }
+        },
+        {
+          "turn_index": 2,
+          "query": "Còn hàng không?",
+          "expected_intent": "PRODUCT_DETAIL",
+          "actual_intent": "UNKNOWN",
+          "expected_entities": [
+            "AquaJet Mini Water Flosser"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 14857,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Bạn vui lòng cho biết cụ thể muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin phòng khám.",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "intent_match: expected PRODUCT_DETAIL, got UNKNOWN",
+            "entity_present: missing ['AquaJet Mini Water Flosser']",
+            "follow_up_memory_used: expected prior entity in response without re-mention.",
+            "entity_inherited_not_reresolved: failed for test_target=follow_up_after_clarification_resolved"
+          ],
+          "test_target": "follow_up_after_clarification_resolved",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "fail",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "not_applicable",
+            "resolution_source": "database",
+            "gate_status": "clarify",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {
+              "original_query": "Còn hàng không?",
+              "pipeline_query": "Còn hàng không?",
+              "enabled": true,
+              "skipped": false,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "is_standalone": true
+            },
+            "violations": [
+              {
+                "code": "task_requires_clarification",
+                "message": "Bạn vui lòng cho biết cụ thể muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin phòng khám.",
+                "task_id": "t1",
+                "details": {}
+              }
+            ]
+          }
+        },
+        {
+          "turn_index": 3,
+          "query": "Có bảo hành không?",
+          "expected_intent": "FAQ",
+          "actual_intent": "UNKNOWN",
+          "expected_entities": [
+            "AquaJet Mini Water Flosser"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": true,
+          "expects_multi_task": false,
+          "latency_ms": 10643,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Bạn vui lòng cho biết cụ thể muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin phòng khám.",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "intent_match: expected FAQ, got UNKNOWN",
+            "entity_present: missing ['AquaJet Mini Water Flosser']",
+            "follow_up_memory_used: expected prior entity in response without re-mention.",
+            "entity_inherited_not_reresolved: failed for test_target=faq_inherits_entity_post_clarification"
+          ],
+          "test_target": "faq_inherits_entity_post_clarification",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "fail",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "not_applicable",
+            "resolution_source": "database",
+            "gate_status": "clarify",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {
+              "original_query": "Có bảo hành không?",
+              "pipeline_query": "Có bảo hành không?",
+              "enabled": true,
+              "skipped": false,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "is_standalone": true
+            },
+            "violations": [
+              {
+                "code": "task_requires_clarification",
+                "message": "Bạn vui lòng cho biết cụ thể muốn hỏi về sản phẩm, dịch vụ, FAQ hay thông tin phòng khám.",
+                "task_id": "t1",
+                "details": {}
+              }
+            ]
+          }
+        },
+        {
+          "turn_index": 4,
+          "query": "Cảm ơn bạn",
+          "expected_intent": "CHITCHAT",
+          "actual_intent": "CHITCHAT",
+          "expected_entities": [],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 44229,
+          "http_status": 200,
+          "degraded": false,
+          "answer_text": "Rất vui được giúp đỡ bạn!",
+          "checks": {
+            "intent_match": "pass",
+            "entity_present": "skip",
+            "follow_up_memory_used": "skip",
+            "multi_task_produced": "skip",
+            "not_degraded": "pass",
+            "has_answer_text": "pass",
+            "valid_json_response": "pass",
+            "no_hallucinated_price": "skip"
+          },
+          "turn_passed": true,
+          "failure_reasons": [],
+          "test_target": "graceful_end_after_full_flow",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "pass"
+          },
+          "v2_notes": [],
+          "debug_snapshot": {
+            "resolution_status": "not_applicable",
+            "resolution_source": "database",
+            "gate_status": "pass",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {
+              "original_query": "Cảm ơn bạn",
+              "pipeline_query": "Cảm ơn bạn",
+              "enabled": true,
+              "skipped": true,
+              "needs_clarification": false,
+              "referenced_entities": [],
+              "skip_reason": "Pure social intent does not need query rewriting"
+            },
+            "violations": []
+          }
+        }
+      ]
+    }
+  ],
+  "delta_from_v1": {
+    "intent_accuracy": "-0.4091",
+    "entity_accuracy": "-0.4842",
+    "follow_up_accuracy": "-0.5000",
+    "new_checks_introduced": [
+      "normalize_resolved",
+      "entity_inherited_not_reresolved",
+      "entity_switched_correctly",
+      "no_stale_entity",
+      "cardinality_two_resolved",
+      "cardinality_one_after_compare",
+      "implicit_ref_resolved",
+      "multi_task_both_pass_gate",
+      "entity_survives_no_entity_turn",
+      "clarification_triggered",
+      "resolved_after_clarification",
+      "no_entity_leaked_to_no_entity_intent",
+      "chitchat_clean_state"
+    ]
+  }
+}

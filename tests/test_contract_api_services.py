@@ -9,6 +9,7 @@ from app.generation.schemas import (
     ChatRequest,
     ChatResponse,
     ChatSuggestion,
+    EntityReference,
     ResultBody,
     SafetyInfo,
 )
@@ -70,6 +71,11 @@ def test_chat_request_response_schema_contract():
                 "type": str | None,
                 "required": False,
                 "default": None,
+            },
+            "entities": {
+                "type": list[EntityReference],
+                "required": False,
+                "default_factory": True,
             },
             "answer": {"type": ResultBody, "required": True},
             "safety": {

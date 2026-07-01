@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from app.constants import Intent
 from app.orchestration.intent_registry import EntityScope, capability_for
 from app.orchestration.schemas import (
     BoundTask,
@@ -55,7 +54,7 @@ class ConsistencyGate:
                 for item in evidence
                 if item.task_id == task.task_id
             ]
-            if task.intent in {Intent.GREETING, Intent.CHITCHAT, Intent.UNKNOWN}:
+            if contract.minimum_items == 0 and not capability.allowed_tools:
                 passed.append(task.task_id)
                 continue
             if len(task_items) < contract.minimum_items:
@@ -151,7 +150,7 @@ class ConsistencyGate:
                 _violation(
                     task,
                     "filter_only_task_has_entity",
-                    "List/filter intent must not carry active entity binding",
+                    "List/filter intent must not carry resolved entity state",
                 )
             )
         elif capability.entity_scope == EntityScope.EXACTLY_ONE and (
@@ -216,11 +215,12 @@ class ConsistencyGate:
                     {"entity_type": task.entity_type},
                 )
             )
+        domain = capability.entity_domain
         filter_ids = (
             task.filters.product_ids
-            if task.intent.name.startswith("PRODUCT_")
+            if domain == "product"
             else task.filters.service_ids
-            if task.intent.name.startswith("SERVICE_")
+            if domain == "service"
             else task.resolved_ids
         )
         if (

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.constants import Intent
-from app.db.models import Chunk, Document, FAQ, Product, Service, TableRow
+from app.db.models import FAQ, Chunk, Document, Product, Service, TableRow
 from app.retrieval.dense_retriever import DenseRetriever
 from app.retrieval.sparse_retriever import SparseRetriever
 from app.retrieval.structured_retriever import StructuredRetriever

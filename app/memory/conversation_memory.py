@@ -59,6 +59,71 @@ class ConversationMemory:
             ],
         }
 
+    def load_raw_transcript(
+        self,
+        session: Session,
+        session_id: str | None,
+        *,
+        history_turns: int | None = None,
+    ) -> list[dict[str, str]]:
+        """Load raw user/assistant text for contextual query rewriting."""
+        if not session_id:
+            return []
+        row_limit = max(1, int(history_turns or self.history_turns) * 2)
+        turns = list(
+            session.scalars(
+                select(ConversationTurn)
+                .where(ConversationTurn.session_id == session_id)
+                .order_by(desc(ConversationTurn.created_at))
+                .limit(row_limit)
+            ).all()
+        )
+        turns.reverse()
+        return [
+            {"role": turn.role, "text": turn.content}
+            for turn in turns
+            if turn.role in {"user", "assistant"} and turn.content
+        ]
+
+    @staticmethod
+    def recent_entities(
+        history: dict[str, Any],
+        *,
+        limit: int = 8,
+    ) -> list[dict[str, str]]:
+        """Return canonical recent entity hints for query rewriting.
+
+        These hints are not authoritative; database entity resolution remains
+        responsible for selecting the final business records.
+        """
+        state = _normalize_state(history.get("state") if isinstance(history, dict) else None)
+        entities: list[dict[str, str]] = []
+        for name in state["active_product_names"]:
+            entities.append({"name": name, "type": "product"})
+        for name in state["active_service_names"]:
+            entities.append({"name": name, "type": "service"})
+        interest = state.get("interest_state")
+        active_entities = (
+            interest.get("active_entities") if isinstance(interest, dict) else None
+        )
+        if isinstance(active_entities, list):
+            for entity in active_entities:
+                if not isinstance(entity, dict):
+                    continue
+                entity_type = str(entity.get("type") or "").strip()
+                name = str(entity.get("name") or "").strip()
+                if entity_type in {"product", "service"} and name:
+                    entities.append({"name": name, "type": entity_type})
+        deduped: list[dict[str, str]] = []
+        seen: set[tuple[str, str]] = set()
+        for entity in entities:
+            key = (entity["type"], entity["name"])
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(entity)
+        return deduped[:limit]
+
     def save_exchange(
         self,
         session: Session,

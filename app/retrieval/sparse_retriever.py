@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.constants import Intent
 from app.db.models import FAQ, Chunk, Document, Product, Service, TableRow
+from app.orchestration.intent_registry import capability_for
 from app.retrieval.normalization import normalize_vietnamese, search_query_tokens
 from app.retrieval.types import RetrievalResult
 
@@ -55,6 +56,21 @@ class SparseRetriever:
                 normalized_query,
             )
         return result_sets
+
+    def retrieve_faqs(
+        self,
+        session: Session,
+        query: str,
+    ) -> list[RetrievalResult]:
+        normalized_query = normalize_vietnamese(query)
+        tokens = search_query_tokens(query)
+        if not tokens:
+            return []
+        tsquery = func.to_tsquery(
+            "simple",
+            " | ".join(f"{token}:*" for token in tokens),
+        )
+        return self._faqs(session, tsquery, normalized_query)
 
     def _chunks(
         self,
@@ -352,11 +368,10 @@ class SparseRetriever:
 
     @staticmethod
     def _entity_type_filter(intent: Intent) -> str | None:
-        if intent in {Intent.PRODUCT_DETAIL, Intent.PRODUCT_COMPARE}:
-            return "product"
-        if intent == Intent.SERVICE_DETAIL:
-            return "service"
-        if intent == Intent.FAQ:
+        capability = capability_for(intent)
+        if capability.entity_domain in {"product", "service"}:
+            return capability.entity_domain
+        if capability.primary_source_type == "faq":
             return "faq"
         return None
 

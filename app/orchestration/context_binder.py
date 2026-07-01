@@ -10,7 +10,9 @@ from app.orchestration.intent_registry import (
     EntityScope,
     InheritanceRule,
     capability_for,
+    entity_type_for_intent,
 )
+from app.orchestration.query_features import QueryFeatures
 from app.orchestration.schemas import (
     BindingDecision,
     BindingSource,
@@ -20,7 +22,6 @@ from app.orchestration.schemas import (
     TaskPlan,
 )
 from app.retrieval.normalization import normalize_vietnamese
-from app.retrieval.router import IntentRouter
 
 
 @dataclass(frozen=True)
@@ -169,49 +170,10 @@ class ContextBinder:
                 ),
             )
 
-        state = _state(history)
-        if entity_type is None:
-            active_domain = str(state.get("active_domain") or "")
-            if active_domain in {"product", "service"}:
-                entity_type = active_domain
-        memory_names = tuple(_active_names(state, entity_type))
-        memory_ids = tuple(_active_ids(state, entity_type))
         inherited = _inheritable_task(
             prior_bound_tasks,
             entity_type=entity_type,
         )
-        inherited_names = inherited.entity_names if inherited else ()
-        inherited_ids = inherited.resolved_ids if inherited else ()
-
-        if (
-            capability.inheritance_rule
-            == InheritanceRule.MEMORY_PLUS_EXPLICIT
-            and explicit_names
-            and (memory_names or inherited_names)
-        ):
-            context_names = memory_names or inherited_names
-            context_ids = memory_ids or inherited_ids
-            return BindingDecision(
-                task_id=task.task_id,
-                intent=task.intent,
-                entity_type=entity_type,
-                reference_mode=ReferenceMode.MIXED,
-                binding_source=BindingSource.MIXED_CONTEXT,
-                entity_names=tuple(
-                    _dedupe([*context_names, *explicit_names])
-                ),
-                inherited_resolved_ids=tuple(context_ids),
-                inherited_from_task_id=(
-                    inherited.task_id
-                    if inherited and not memory_names
-                    else None
-                ),
-                rejected_planner_entities=rejected,
-                explicit_spans=tuple(
-                    span.as_dict() for span in explicit_spans
-                ),
-                reason_codes=("memory_or_same_turn_plus_explicit",),
-            )
 
         if explicit_names:
             return BindingDecision(
@@ -251,27 +213,6 @@ class ContextBinder:
                     span.as_dict() for span in explicit_spans
                 ),
                 reason_codes=("inherit_from_resolved_same_turn_task",),
-            )
-
-        memory_allowed = capability.inheritance_rule in {
-            InheritanceRule.EXPLICIT_OR_MEMORY,
-            InheritanceRule.MEMORY_PLUS_EXPLICIT,
-            InheritanceRule.INHERIT_IF_RESOLVED,
-        }
-        if implicit and memory_allowed and (memory_names or memory_ids):
-            return BindingDecision(
-                task_id=task.task_id,
-                intent=task.intent,
-                entity_type=entity_type,
-                reference_mode=ReferenceMode.IMPLICIT,
-                binding_source=BindingSource.CONVERSATION_STATE,
-                entity_names=memory_names,
-                inherited_resolved_ids=memory_ids,
-                rejected_planner_entities=planner_entities,
-                explicit_spans=tuple(
-                    span.as_dict() for span in explicit_spans
-                ),
-                reason_codes=("implicit_follow_up_uses_verified_state",),
             )
 
         if capability.entity_scope == EntityScope.OPTIONAL:
@@ -334,23 +275,8 @@ class ContextBinder:
         )
 
 
-def _state(history: dict[str, Any]) -> dict[str, Any]:
-    value = history.get("state") if isinstance(history, dict) else None
-    return value if isinstance(value, dict) else {}
-
-
 def _task_entity_type(task: PlannedTask) -> str | None:
-    if task.intent.name.startswith("PRODUCT_"):
-        return "product"
-    if task.intent.name.startswith("SERVICE_"):
-        return "service"
-    if task.intent == Intent.FAQ:
-        proposed = str(
-            task.planner_entity_type
-            or ""
-        )
-        return proposed if proposed in {"product", "service"} else None
-    return None
+    return entity_type_for_intent(task.intent, task.planner_entity_type)
 
 
 def _inheritable_task(
@@ -451,119 +377,21 @@ def _is_implicit_follow_up(
     original_query: str,
     task_query: str,
 ) -> bool:
-    normalized_original = IntentRouter._normalize(original_query)
-    normalized_task = IntentRouter._normalize(task_query)
-    if _has_reference_pronoun(normalized_original):
-        return True
-    if _has_contextual_follow_up_cue(normalized_original):
-        return True
-    if _short_follow_up(normalized_original):
+    features = QueryFeatures.extract(original_query)
+    normalized_original = normalize_vietnamese(original_query).lower().strip()
+    normalized_task = normalize_vietnamese(task_query).lower().strip()
+    if features.has_implicit_reference:
         return True
     return bool(
         normalized_original
         and normalized_original in normalized_task
         and normalized_original != normalized_task
-        and _short_follow_up(normalized_original)
-    )
-
-
-def _has_contextual_follow_up_cue(normalized_query: str) -> bool:
-    return any(
-        phrase in normalized_query
-        for phrase in (
-            "sau khi",
-            "sau do",
-            "can kieng",
-            "kieng gi",
-            "loai nao",
-            "cai nao",
-            "phu hop hon",
-            "co dau khong",
-            "co an toan khong",
-            "co tot khong",
-            "dung nhu the nao",
-            "su dung nhu the nao",
-        )
-    )
-
-
-def _short_follow_up(normalized_query: str) -> bool:
-    tokens = normalized_query.split()
-    if len(tokens) > 5:
-        return False
-    return any(
-        phrase in normalized_query
-        for phrase in (
-            "gia",
-            "bao nhieu",
-            "con hang",
-            "so luong",
-            "mat bao lau",
-            "bao lau",
-            "thoi gian",
-            "co dau",
-            "co tot",
-            "can kieng",
-            "kieng gi",
-            "sau khi",
-        )
-    )
-
-
-def _has_reference_pronoun(query: str) -> bool:
-    normalized = IntentRouter._normalize(query)
-    return any(
-        phrase in f" {normalized} "
-        for phrase in (
-            " no ",
-            " cai do ",
-            " cai nay ",
-            " loai do ",
-            " loai nay ",
-            " dich vu do ",
-            " san pham do ",
-            " trong so do ",
-        )
+        and features.has_implicit_reference
     )
 
 
 def _is_filter_refinement(query: str) -> bool:
-    normalized = IntentRouter._normalize(query)
-    return _has_reference_pronoun(normalized) or any(
-        phrase in normalized
-        for phrase in (
-            "sap xep",
-            "tang dan",
-            "giam dan",
-            "re nhat",
-            "cao nhat",
-            "trong so do",
-            "con hang",
-            "loc",
-        )
-    )
-
-
-def _active_names(state: dict[str, Any], domain: str | None) -> list[str]:
-    if domain not in {"product", "service"}:
-        active_domain = str(state.get("active_domain") or "")
-        domain = active_domain if active_domain in {"product", "service"} else None
-    return _string_values(
-        state.get(f"active_{domain}_names")
-        if domain
-        else None
-    )
-
-
-def _active_ids(state: dict[str, Any], domain: str | None) -> list[str]:
-    if domain not in {"product", "service"}:
-        active_domain = str(state.get("active_domain") or "")
-        domain = active_domain if active_domain in {"product", "service"} else None
-    return _string_values(
-        state.get(f"active_{domain}_ids")
-        if domain
-        else None
-    )
+    return QueryFeatures.extract(query).is_filter_refinement
 
 
 def _clarification_for_scope(
@@ -574,16 +402,6 @@ def _clarification_for_scope(
     if scope == EntityScope.TWO_OR_MORE:
         return f"Bạn vui lòng nêu rõ ít nhất hai {label} cần so sánh."
     return f"Bạn đang hỏi {label} nào? Vui lòng cho tôi tên cụ thể."
-
-
-def _string_values(value: object) -> list[str]:
-    if value in (None, ""):
-        return []
-    if isinstance(value, str):
-        return [value.strip()] if value.strip() else []
-    if isinstance(value, (list, tuple, set)):
-        return _dedupe(str(item) for item in value if item not in (None, ""))
-    return [str(value).strip()] if str(value).strip() else []
 
 
 def _dedupe(values) -> list[str]:

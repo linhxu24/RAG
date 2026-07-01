@@ -77,10 +77,17 @@ export interface ChatSuggestion {
   reason_code: string;
 }
 
+export interface ChatEntity {
+  type: "product" | "service" | "faq" | "clinic_info" | "unknown" | string;
+  name: string;
+  matched_id?: string | null;
+}
+
 export interface ChatResponse {
   trace_id: string;
   intent?: string;
   answer_type?: string;
+  entities?: ChatEntity[];
   degraded?: boolean;
   answer?: ChatAnswer;
   message?: ChatAnswer;

@@ -17,6 +17,7 @@ def evaluate_conversation_case(
 ) -> tuple[dict[str, float | None], dict[str, Any], list[dict[str, Any]]]:
     metadata = case.get("metadata") if isinstance(case.get("metadata"), dict) else {}
     span_output = _step_output(trace_steps, "entity_span_extraction")
+    rewrite_output = _step_output(trace_steps, "contextual_query_rewrite")
     binding_output = _step_output(trace_steps, "context_binding")
     canonical_output = _step_output(trace_steps, "task_canonicalization")
     memory_output = _step_output(trace_steps, "memory_load")
@@ -55,6 +56,8 @@ def evaluate_conversation_case(
         for task in tasks
         if isinstance(task, dict)
     )
+    rewrite_context_used = _rewrite_context_used(rewrite_output)
+    memory_context_used = memory_context_used or rewrite_context_used
     follow_up_success = None
     if requires_follow_up:
         follow_up_success = float(
@@ -104,6 +107,8 @@ def evaluate_conversation_case(
         "entity_span_degraded": bool(span_output.get("degraded")),
         "binding_decisions": decisions,
         "binding_sources": sorted(binding_sources),
+        "query_rewrite": rewrite_output,
+        "rewrite_context_used": rewrite_context_used,
         "memory_turn_count": memory_output.get("turn_count"),
         "memory_state": memory_output.get("state"),
         "memory_context_used": memory_context_used,
@@ -210,6 +215,19 @@ def _actual_entities(tasks: list[Any]) -> list[str]:
         if isinstance(mentions, list):
             values.extend(str(value) for value in mentions if value)
     return list(dict.fromkeys(values))
+
+
+def _rewrite_context_used(output: dict[str, Any]) -> bool:
+    if not output:
+        return False
+    if output.get("needs_clarification"):
+        return False
+    referenced = output.get("referenced_entities")
+    if isinstance(referenced, list) and any(str(item).strip() for item in referenced):
+        return True
+    original = str(output.get("original_query") or "").strip()
+    rewritten = str(output.get("rewritten_query") or "").strip()
+    return bool(original and rewritten and original != rewritten)
 
 
 def _entity_recall(expected: list[str], actual: list[str]) -> float | None:

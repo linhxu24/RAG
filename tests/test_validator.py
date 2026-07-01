@@ -58,6 +58,54 @@ def test_accepts_price_written_in_million_unit():
     assert response.intent == Intent.PRODUCT_DETAIL
 
 
+def test_entity_grounding_uses_capability_contract_for_authoritative_intents():
+    data = payload("Tôi tìm thấy dữ liệu phù hợp.")
+    data["intent"] = "PRODUCT_LIST"
+    context = {
+        "tasks": [
+            {
+                "task_id": "task-1",
+                "intent": "PRODUCT_LIST",
+                "entity_names": ["Máy tăm nước AquaJet"],
+            }
+        ],
+        "items": [
+            {
+                "source_id": "product-1",
+                "source_type": "product",
+                "text": "Máy tăm nước AquaJet. Giá: 850000",
+                "raw_json": {"name": "Máy tăm nước AquaJet", "price": 850000},
+                "source": {},
+            }
+        ],
+    }
+
+    with pytest.raises(
+        ResponseValidationError,
+        match="canonical task entity",
+    ):
+        ResponseValidator().validate(data, context=context)
+
+
+def test_entity_grounding_skips_intents_without_capability_requirement():
+    data = payload("Có thông tin trong tài liệu tham khảo.")
+    data["intent"] = "FAQ"
+    context = {
+        "tasks": [
+            {
+                "task_id": "task-1",
+                "intent": "FAQ",
+                "entity_names": ["Máy tăm nước AquaJet"],
+            }
+        ],
+        "items": [],
+    }
+
+    response = ResponseValidator().validate(data, context=context)
+
+    assert response.intent == Intent.FAQ
+
+
 def test_rejects_invalid_json():
     with pytest.raises(ResponseValidationError, match="Invalid JSON"):
         ResponseValidator().validate("{not-json", context={"items": []})

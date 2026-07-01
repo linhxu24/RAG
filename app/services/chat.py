@@ -1,5 +1,6 @@
 from typing import Any
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.config import Settings
@@ -17,7 +18,14 @@ from app.orchestration.binding_pipeline import TaskBindingPipeline
 from app.orchestration.consistency_gate import ConsistencyGate
 from app.orchestration.context_binder import ContextBinder
 from app.orchestration.evidence_merger import EvidenceMerger
-from app.orchestration.intent_registry import capability_for
+from app.orchestration.intent_registry import capability_for, entity_label
+from app.orchestration.query_features import QueryFeatures
+from app.orchestration.query_rewriter import (
+    QueryRewriteInput,
+    RawTurn,
+    RecentEntity,
+    rewrite_query,
+)
 from app.orchestration.suggestions import ContextualSuggestionEngine
 from app.orchestration.task_canonicalizer import TaskCanonicalizer
 from app.orchestration.task_planner import TaskPlanner
@@ -27,7 +35,7 @@ from app.retrieval.context_builder import ContextBuilder
 from app.retrieval.dense_retriever import DenseRetriever
 from app.retrieval.entity_resolver import DatabaseEntityResolver
 from app.retrieval.planner import RetrievalPlan, RetrievalPlanner
-from app.retrieval.query_rewrite import QueryRewriter
+from app.retrieval.query_rewrite import QueryRewriter as HyDEQueryRewriter
 from app.retrieval.reranker import OptionalReranker
 from app.retrieval.router import IntentRouter
 from app.retrieval.rrf import reciprocal_rank_fusion
@@ -41,6 +49,9 @@ from app.retrieval.types import RetrievalResult
 
 
 class ChatService:
+    EVIDENCE_FIRST_RUNTIME = "evidence_first"
+    LEGACY_RUNTIME = "legacy_single_intent_debug"
+
     DIRECT_INTENTS = {
         Intent.GREETING,
         Intent.CHITCHAT,
@@ -55,7 +66,7 @@ class ChatService:
         self.router = IntentRouter()
         self.entity_resolver = DatabaseEntityResolver(settings)
         self.planner = RetrievalPlanner(settings)
-        self.rewriter = QueryRewriter()
+        self.rewriter = HyDEQueryRewriter()
         self.structured = StructuredRetriever(settings)
         embedder = EmbeddingService(settings)
         self.dense = DenseRetriever(
@@ -105,6 +116,19 @@ class ChatService:
         trace = TraceRecorder.start(session, request.message, request.session_id)
         debug_data: dict[str, Any] = {}
         try:
+            runtime_path = (
+                self.EVIDENCE_FIRST_RUNTIME
+                if self.settings.enable_multi_task_planner
+                else self.LEGACY_RUNTIME
+            )
+            debug_data["runtime_path"] = runtime_path
+            trace.record(
+                "runtime_path",
+                output_data={
+                    "active": runtime_path,
+                    "enable_multi_task_planner": self.settings.enable_multi_task_planner,
+                },
+            )
             if self.settings.enable_multi_task_planner:
                 return await self._chat_with_evidence_pipeline(
                     session,
@@ -113,6 +137,16 @@ class ChatService:
                     debug_data,
                 )
 
+            trace.record(
+                "legacy_runtime_warning",
+                output_data={
+                    "active": self.LEGACY_RUNTIME,
+                    "reason": (
+                        "ENABLE_MULTI_TASK_PLANNER=false; using the legacy "
+                        "single-intent debug runtime"
+                    ),
+                },
+            )
             product_names, service_names = self.structured.active_names(session)
             product_category_terms = active_product_category_terms(session)
             with trace.step("router_intent", {"query": request.message}) as step:
@@ -420,6 +454,31 @@ class ChatService:
                 session, trace, response, request.debug, debug_data, routed.confidence
             )
         except Exception as exc:
+            if self._is_recoverable_chat_error(exc):
+                response = self.generator.direct_response(
+                    intent=Intent.UNKNOWN,
+                    confidence=0.0,
+                    context={"items": [], "total_chars": 0},
+                )
+                response.degraded = True
+                trace.record(
+                    "pipeline_fallback",
+                    output_data={
+                        "runtime_path": debug_data.get("runtime_path"),
+                        "error_type": type(exc).__name__,
+                        "reason": str(exc),
+                    },
+                    status="degraded",
+                    error_message=str(exc),
+                )
+                return self._finish(
+                    session,
+                    trace,
+                    response,
+                    request.debug,
+                    debug_data,
+                    0.0,
+                )
             fallback = self.generator.direct_response(
                 intent=Intent.UNKNOWN,
                 confidence=0.0,
@@ -434,6 +493,17 @@ class ChatService:
             )
             raise RuntimeError(f"Chat pipeline failed; trace_id={trace.trace_id}: {exc}") from exc
 
+    @staticmethod
+    def _is_recoverable_chat_error(exc: Exception) -> bool:
+        current: BaseException | None = exc
+        seen: set[int] = set()
+        while current is not None and id(current) not in seen:
+            seen.add(id(current))
+            if isinstance(current, SQLAlchemyError):
+                return False
+            current = current.__cause__ or current.__context__
+        return isinstance(exc, (RuntimeError, TimeoutError, ValueError))
+
     async def _chat_with_evidence_pipeline(
         self,
         session: Session,
@@ -443,24 +513,147 @@ class ChatService:
     ) -> ChatResponse:
         with trace.step("memory_load", {"session_id": request.session_id}) as step:
             history = self.memory.load(session, request.session_id)
+            raw_transcript = self.memory.load_raw_transcript(
+                session,
+                request.session_id,
+                history_turns=self.settings.query_rewrite_history_turns,
+            )
+            recent_entities = self.memory.recent_entities(history)
+            history["raw_transcript"] = raw_transcript
+            history["recent_entities"] = recent_entities
             step["output"] = {
                 "session_id": history.get("session_id"),
                 "turn_count": len(history.get("turns", [])),
+                "raw_transcript_turn_count": len(raw_transcript),
+                "recent_entities": recent_entities,
                 "has_summary": bool(history.get("summary")),
                 "state": history.get("state"),
             }
 
         product_names, service_names = self.structured.active_names(session)
         product_category_terms = active_product_category_terms(session)
+        pipeline_query = request.message
+        rewrite_debug: dict[str, Any] = {
+            "original_query": request.message,
+            "pipeline_query": request.message,
+            "enabled": self.settings.enable_query_rewrite,
+            "skipped": False,
+            "needs_clarification": False,
+            "referenced_entities": [],
+        }
+        pre_rewrite_route = self.router.route(
+            request.message,
+            known_products=product_names,
+            known_services=service_names,
+            known_product_categories=product_category_terms,
+        )
+        if (
+            self.settings.enable_query_rewrite
+            and not self._is_pure_social_query(request.message, pre_rewrite_route)
+        ):
+            rewrite_payload = QueryRewriteInput(
+                current_query=request.message,
+                turns=[
+                    RawTurn(role=turn["role"], text=turn["text"])
+                    for turn in raw_transcript
+                    if turn.get("role") and turn.get("text")
+                ],
+                recent_entities=[
+                    RecentEntity(name=entity["name"], type=entity["type"])
+                    for entity in recent_entities
+                    if entity.get("name") and entity.get("type")
+                ],
+            )
+            with trace.step(
+                "contextual_query_rewrite",
+                {
+                    "original_query": request.message,
+                    "history_turns": len(raw_transcript),
+                    "recent_entities": recent_entities,
+                    "model": self.settings.llm_query_rewrite_model,
+                },
+            ) as step:
+                rewritten = await rewrite_query(
+                    self.llm,
+                    rewrite_payload,
+                    model=self.settings.llm_query_rewrite_model,
+                    timeout_s=self.settings.query_rewrite_timeout_s,
+                )
+                pipeline_query = rewritten.rewritten_query.strip() or request.message
+                rewrite_debug.update(
+                    {
+                        "pipeline_query": pipeline_query,
+                        "is_standalone": rewritten.is_standalone,
+                        "needs_clarification": rewritten.needs_clarification,
+                        "referenced_entities": rewritten.referenced_entities,
+                    }
+                )
+                step["output"] = {
+                    "original_query": request.message,
+                    "rewritten_query": pipeline_query,
+                    "is_standalone": rewritten.is_standalone,
+                    "needs_clarification": rewritten.needs_clarification,
+                    "referenced_entities": rewritten.referenced_entities,
+                }
+            if rewritten.needs_clarification:
+                debug_data["query_rewrite"] = {
+                    **rewrite_debug,
+                    "needs_clarification": True,
+                }
+                response = self.generator.direct_response(
+                    intent=Intent.UNKNOWN,
+                    confidence=0.25,
+                    context={"items": [], "total_chars": 0},
+                    clarification_reason="query_rewrite_needs_clarification",
+                    clarification_message=(
+                        "Bạn vui lòng nói rõ hơn bạn đang nhắc tới sản phẩm, "
+                        "dịch vụ hoặc thông tin nào."
+                    ),
+                )
+                memory_save_payload = {
+                    "session_id": request.session_id,
+                    "user_content": request.message,
+                    "assistant_content": response.result.text,
+                    "detected_intents": [Intent.UNKNOWN.value],
+                    "entities": {"tasks": {}},
+                    "resolved_ids": {
+                        "evidence_ids": [],
+                        "active_product_ids": [],
+                        "active_service_ids": [],
+                    },
+                    "state": _normalize_conversation_state(history.get("state")),
+                    "trace_id": trace.trace_id,
+                    "suggestion_count": 0,
+                }
+                return self._finish(
+                    session,
+                    trace,
+                    response,
+                    request.debug,
+                    debug_data,
+                    0.25,
+                    memory_save_payload=memory_save_payload,
+                )
+        else:
+            reason = (
+                "Contextual query rewriting disabled"
+                if not self.settings.enable_query_rewrite
+                else "Pure social intent does not need query rewriting"
+            )
+            rewrite_debug.update({"skipped": True, "skip_reason": reason})
+            trace.skip("contextual_query_rewrite", reason)
+
+        debug_data["query_rewrite"] = rewrite_debug
         with trace.step(
             "task_planning",
             {
-                "query": request.message,
+                "query": pipeline_query,
+                "original_query": request.message,
                 "history_turns": len(history.get("turns", [])),
             },
         ) as step:
             plan = await self.task_planner.plan(
-                query=request.message,
+                query=pipeline_query,
                 history=history,
                 settings=self.settings,
                 llm=self.llm,
@@ -472,10 +665,10 @@ class ChatService:
 
         with trace.step(
             "entity_span_extraction",
-            {"query": request.message},
+            {"query": pipeline_query, "original_query": request.message},
         ) as step:
             span_result = self.entity_span_extractor.extract(
-                request.message,
+                pipeline_query,
                 known_products=product_names,
                 known_services=service_names,
             )
@@ -484,7 +677,8 @@ class ChatService:
         with trace.step(
             "context_binding",
             {
-                "query": request.message,
+                "query": pipeline_query,
+                "original_query": request.message,
                 "state": history.get("state"),
                 "spans": span_result.as_dict(),
             },
@@ -492,7 +686,7 @@ class ChatService:
             binding_pipeline_result = self.task_binding_pipeline.run(
                 session,
                 plan=plan,
-                original_query=request.message,
+                original_query=pipeline_query,
                 history=history,
                 span_result=span_result,
             )
@@ -507,7 +701,8 @@ class ChatService:
         with trace.step(
             "entity_resolution",
             {
-                "query": request.message,
+                "query": pipeline_query,
+                "original_query": request.message,
                 "tasks": plan.as_dict()["tasks"],
             },
         ) as step:
@@ -552,7 +747,7 @@ class ChatService:
             {"evidence_count": len(tool_result.evidence)},
         ) as step:
             evidence_pack = self.evidence_merger.merge(
-                query=request.message,
+                query=pipeline_query,
                 plan=bound_plan,
                 evidence=tool_result.evidence,
             )
@@ -628,7 +823,7 @@ class ChatService:
                 from app.generation.prompts import build_chitchat_prompt
 
                 prompt = build_chitchat_prompt(
-                    query=request.message,
+                    query=pipeline_query,
                     intent=primary_intent,
                     confidence=confidence,
                 )
@@ -639,7 +834,7 @@ class ChatService:
                     {"mode": "no_rag_social", "intent": primary_intent.value},
                 ) as step:
                     response, generation_meta = await self.generator.generate_chitchat_with_retry(
-                        query=request.message,
+                        query=pipeline_query,
                         confidence=confidence,
                         session=session,
                         intent=primary_intent,
@@ -681,7 +876,7 @@ class ChatService:
                 from app.generation.prompts import build_synthesis_prompt
 
                 prompt = build_synthesis_prompt(
-                    query=request.message,
+                    query=pipeline_query,
                     intent=primary_intent,
                     confidence=confidence,
                     evidence_pack=synthesis_payload,
@@ -693,7 +888,7 @@ class ChatService:
                     {"model": self.settings.llm_generation_model},
                 ) as step:
                     response, generation_meta = await self.generator.generate_synthesis_with_retry(
-                        query=request.message,
+                        query=pipeline_query,
                         intent=primary_intent,
                         confidence=confidence,
                         evidence_pack=synthesis_payload,
@@ -1039,6 +1234,27 @@ class ChatService:
         return plan.uses_hybrid
 
     @staticmethod
+    def _is_pure_social_query(query: str, routed) -> bool:
+        if routed.intent not in {Intent.GREETING, Intent.CHITCHAT}:
+            return False
+        features = QueryFeatures.extract(
+            query,
+            entity_names_in_query=tuple(routed.entities or ()),
+        )
+        has_business_cue = any(
+            (
+                features.is_schedule_query,
+                features.is_availability,
+                features.is_price,
+                features.is_duration,
+                features.asks_list,
+                features.asks_compare,
+                features.has_entity_mention,
+            )
+        )
+        return not has_business_cue
+
+    @staticmethod
     def _effective_entities(routed, resolution) -> list[str]:
         if routed.source in {"ollama", "openai"} and routed.entities:
             return routed.entities
@@ -1094,15 +1310,17 @@ class ChatService:
             state["active_service_ids"] = _dedupe(service_ids)
             state["active_service_names"] = _dedupe(service_names)
 
-        primary_intent = plan.primary_intent
-        if primary_intent.name.startswith("PRODUCT_"):
+        primary_capability = capability_for(plan.primary_intent)
+        if product_ids or product_names:
             state["active_domain"] = "product"
             if state["active_product_names"]:
                 state["active_topic"] = state["active_product_names"][0]
-        elif primary_intent.name.startswith("SERVICE_"):
+        elif service_ids or service_names:
             state["active_domain"] = "service"
             if state["active_service_names"]:
                 state["active_topic"] = state["active_service_names"][0]
+        elif primary_capability.entity_domain in {"product", "service"}:
+            state["active_domain"] = primary_capability.entity_domain
 
         current_intents = [task.intent.value for task in plan.tasks]
         state["last_intents"] = _dedupe([*current_intents, *state["last_intents"]])[:8]
@@ -1154,7 +1372,7 @@ class ChatService:
         ]
         if not names:
             return "Bạn vui lòng nhập rõ hơn tên sản phẩm hoặc dịch vụ cần hỏi."
-        label = "sản phẩm" if task.intent.name.startswith("PRODUCT_") else "dịch vụ"
+        label = entity_label(capability_for(task.intent).entity_domain)
         return (
             f"Tôi thấy nhiều {label} gần giống yêu cầu của bạn: "
             f"{', '.join(names)}. Bạn muốn hỏi mục nào?"

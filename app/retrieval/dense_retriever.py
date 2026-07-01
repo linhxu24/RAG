@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.constants import Intent
 from app.db.models import FAQ, Chunk, Document, Product, Service, TableRow
 from app.ingestion.embedder import EmbeddingService
+from app.orchestration.intent_registry import capability_for
 from app.retrieval.types import RetrievalResult
 
 
@@ -37,6 +38,13 @@ class DenseRetriever:
         if intent in {Intent.FAQ, Intent.UNKNOWN}:
             result_sets["faq"] = self._faqs(session, vector)
         return result_sets
+
+    def retrieve_faqs(
+        self,
+        session: Session,
+        query: str,
+    ) -> list[RetrievalResult]:
+        return self._faqs(session, self.embedder.embed_query(query))
 
     def _chunks(self, session: Session, vector: list[float]) -> list[RetrievalResult]:
         distance = Chunk.embedding.cosine_distance(vector)
@@ -174,11 +182,10 @@ class DenseRetriever:
 
     @staticmethod
     def _entity_type_filter(intent: Intent) -> str | None:
-        if intent in {Intent.PRODUCT_DETAIL, Intent.PRODUCT_COMPARE}:
-            return "product"
-        if intent == Intent.SERVICE_DETAIL:
-            return "service"
-        if intent == Intent.FAQ:
+        capability = capability_for(intent)
+        if capability.entity_domain in {"product", "service"}:
+            return capability.entity_domain
+        if capability.primary_source_type == "faq":
             return "faq"
         return None
 

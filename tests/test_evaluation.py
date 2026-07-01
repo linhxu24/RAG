@@ -257,11 +257,21 @@ def test_conversation_case_scores_follow_up_binding_and_multi_task():
                 },
             },
             {
+                "step_name": "contextual_query_rewrite",
+                "output": {
+                    "original_query": "Mất bao lâu?",
+                    "rewritten_query": "Tẩy trắng răng mất bao lâu?",
+                    "is_standalone": False,
+                    "needs_clarification": False,
+                    "referenced_entities": ["Tẩy trắng răng"],
+                },
+            },
+            {
                 "step_name": "context_binding",
                 "output": {
                     "decisions": [
                         {
-                            "binding_source": "conversation_state",
+                            "binding_source": "explicit_span",
                             "entities_after": ["Tẩy trắng răng"],
                         }
                     ],
@@ -272,7 +282,7 @@ def test_conversation_case_scores_follow_up_binding_and_multi_task():
                                 "entities": ["Tẩy trắng răng"],
                                 "selection": {
                                     "mentions": ["Tẩy trắng răng"],
-                                    "resolution_status": "from_conversation_state",
+                                    "resolution_status": "from_query_rewrite",
                                 },
                             },
                             {

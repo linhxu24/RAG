@@ -2,8 +2,7 @@ from decimal import Decimal
 from typing import Any
 
 from app.config import Settings
-from app.constants import Intent
-from app.orchestration.intent_registry import capability_for
+from app.orchestration.intent_registry import EntityScope, capability_for
 from app.orchestration.schemas import BoundTaskPlan, EvidenceItem, EvidencePack
 
 _TRUST_PRIORITY = {
@@ -99,30 +98,33 @@ class EvidenceMerger:
                     f"Chưa lấy đủ dữ liệu xác thực cho: {task.effective_query}"
                 )
                 continue
-            if task.intent in {Intent.PRODUCT_LIST, Intent.SERVICE_LIST}:
+            capability = capability_for(task.intent)
+            contract = capability.evidence_contract
+            if capability.entity_scope == EntityScope.FILTER_ONLY:
                 continue
-            required_type = {
-                Intent.PRODUCT_DETAIL: "product",
-                Intent.SERVICE_DETAIL: "service",
-                Intent.CLINIC_INFO: "clinic_info",
-            }.get(task.intent)
-            if task.intent == Intent.PRODUCT_COMPARE:
-                satisfied = sum(item.source_type == "product" for item in task_items) >= 2
-            elif required_type:
+            if capability.entity_scope == EntityScope.TWO_OR_MORE:
+                satisfied = (
+                    sum(
+                        item.source_type in contract.allowed_source_types
+                        for item in task_items
+                    )
+                    >= contract.minimum_items
+                )
+            elif contract.authoritative_required:
                 satisfied = any(
-                    item.source_type == required_type
+                    item.source_type in contract.allowed_source_types
                     and item.trust_level == "authoritative"
                     for item in task_items
                 )
-            elif task.intent == Intent.FAQ:
+            elif contract.allowed_source_types:
                 satisfied = any(
-                    item.source_type in {"faq", "chunk", "table_row"}
+                    item.source_type in contract.allowed_source_types
                     for item in task_items
                 )
             else:
                 satisfied = (
                     bool(task_items)
-                    or not capability_for(task.intent).allowed_tools
+                    or not capability.allowed_tools
                 )
             if not satisfied:
                 missing.append(

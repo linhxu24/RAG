@@ -7,6 +7,18 @@ from pydantic import BaseModel, Field
 from app.config import Settings
 from app.constants import Intent
 from app.generation.llm_client import LLMClient
+from app.orchestration.conversation_context import (
+    ConversationContext,
+    build_conversation_context,
+)
+from app.orchestration.intent_registry import (
+    EntityScope,
+    capability_for,
+    detail_intent_for_entity_type,
+    domain_for_intent,
+    list_intent_for_entity_type,
+)
+from app.orchestration.query_features import QueryFeatures
 from app.orchestration.schemas import PlannedTask, TaskPlan
 from app.retrieval.router import IntentRouter
 
@@ -47,22 +59,9 @@ class TaskPlanner:
                 known_product_categories=known_product_categories,
             )
             try:
-                response = await llm.generate(
-                    prompt=prompt,
-                    model=settings.llm_router_model,
-                    system=TASK_PLANNER_SYSTEM_PROMPT,
-                    json_mode=True,
-                    timeout_seconds=settings.llm_router_timeout_seconds,
-                    num_predict=settings.llm_router_num_predict,
-                    num_ctx=settings.llm_router_num_ctx,
-                    think=False,
-                )
-                planner_attempts = [response.trace_metadata()]
                 try:
-                    payload = self._parse_llm_output(response.text)
-                except Exception as first_error:
-                    repaired = await llm.generate(
-                        prompt=self._repair_prompt(response.text, str(first_error)),
+                    response = await llm.generate(
+                        prompt=prompt,
                         model=settings.llm_router_model,
                         system=TASK_PLANNER_SYSTEM_PROMPT,
                         json_mode=True,
@@ -71,8 +70,62 @@ class TaskPlanner:
                         num_ctx=settings.llm_router_num_ctx,
                         think=False,
                     )
+                except Exception as provider_error:
+                    return self._heuristic_plan(
+                        query=query,
+                        history=history,
+                        settings=settings,
+                        known_products=known_products,
+                        known_services=known_services,
+                        known_product_categories=known_product_categories,
+                        metadata={
+                            "llm_error": str(provider_error),
+                            "planner_fallback": "heuristic_after_llm_error",
+                        },
+                    )
+                planner_attempts = [response.trace_metadata()]
+                try:
+                    payload = self._parse_llm_output(response.text)
+                except Exception as first_error:
+                    try:
+                        repaired = await llm.generate(
+                            prompt=self._repair_prompt(response.text, str(first_error)),
+                            model=settings.llm_router_model,
+                            system=TASK_PLANNER_SYSTEM_PROMPT,
+                            json_mode=True,
+                            timeout_seconds=settings.llm_router_timeout_seconds,
+                            num_predict=settings.llm_router_num_predict,
+                            num_ctx=settings.llm_router_num_ctx,
+                            think=False,
+                        )
+                    except Exception as provider_error:
+                        return self._heuristic_plan(
+                            query=query,
+                            history=history,
+                            settings=settings,
+                            known_products=known_products,
+                            known_services=known_services,
+                            known_product_categories=known_product_categories,
+                            metadata={
+                                "llm_error": str(provider_error),
+                                "first_parse_error": str(first_error),
+                                "planner_fallback": "heuristic_after_llm_repair_error",
+                            },
+                        )
                     planner_attempts.append(repaired.trace_metadata())
-                    payload = self._parse_llm_output(repaired.text)
+                    try:
+                        payload = self._parse_llm_output(repaired.text)
+                    except Exception as repair_error:
+                        return self._safe_unknown_plan(
+                            query=query,
+                            metadata={
+                                "first_parse_error": str(first_error),
+                                "repair_parse_error": str(repair_error),
+                                "planner_fallback": "safe_unknown_after_invalid_llm_plan",
+                                "attempts": planner_attempts,
+                                "usage": _usage_from_attempts(planner_attempts),
+                            },
+                        )
                 metadata: dict[str, Any] = {
                     "llm_prompt_chars": len(prompt),
                     "plan_reviewed": False,
@@ -174,15 +227,25 @@ class TaskPlanner:
         parts = self._split_query(query)[: settings.max_sub_queries]
         if not parts:
             parts = [query]
-        history_context = self._history_context(history or {})
+        conversation_context = build_conversation_context(history or {})
         full_route = self.router.route(
             query,
             known_products=known_products,
             known_services=known_services,
             known_product_categories=known_product_categories,
         )
+        full_features = QueryFeatures.extract(
+            query=query,
+            entity_names_in_query=tuple(full_route.entities),
+        )
         context_entities = full_route.entities or (
-            history_context["entities"] if self._is_follow_up_query(query) else []
+            list(conversation_context.last_entity_names)
+            if self._is_follow_up_query(
+                query,
+                conversation_context,
+                full_features,
+            )
+            else []
         )
         tasks: list[PlannedTask] = []
         for index, part in enumerate(parts, start=1):
@@ -192,14 +255,25 @@ class TaskPlanner:
                 known_services=known_services,
                 known_product_categories=known_product_categories,
             )
+            features = QueryFeatures.extract(
+                query=part,
+                entity_names_in_query=tuple(routed.entities),
+            )
             entities = routed.entities or (
-                context_entities if self._is_follow_up_query(part) else []
+                context_entities
+                if self._is_follow_up_query(part, conversation_context, features)
+                else []
             )
             intent = self._follow_up_intent(
                 part,
                 routed.intent,
+                conversation_context,
+                features,
+            )
+            intent = self._catalog_intent_for_unbound_detail(
+                intent,
                 entities,
-                history_context["last_intent"],
+                conversation_context,
             )
             task = PlannedTask(
                 task_id=f"t{index}",
@@ -275,156 +349,82 @@ class TaskPlanner:
     def _follow_up_intent(
         query: str,
         routed_intent: Intent,
-        entities: list[str],
-        last_intent: Intent | None,
+        ctx: ConversationContext,
+        features: QueryFeatures,
     ) -> Intent:
-        if not entities or routed_intent not in {Intent.UNKNOWN, Intent.FAQ}:
+        if features.is_social:
+            return Intent.CHITCHAT
+        if features.is_schedule_query:
+            return Intent.CLINIC_INFO
+        if ctx.is_fresh_session:
             return routed_intent
-        normalized = IntentRouter._normalize(query)
-        asks_structured_detail = any(
-            word in normalized
-            for word in (
-                "gia",
-                "chi phi",
-                "bao nhieu",
-                "mat bao lau",
-                "thoi gian",
-                "con hang",
-                "so luong",
-                "link",
-            )
-        )
-        if not asks_structured_detail:
-            return routed_intent
-        if last_intent in {Intent.SERVICE_DETAIL, Intent.SERVICE_LIST}:
-            return Intent.SERVICE_DETAIL
-        if last_intent in {
-            Intent.PRODUCT_DETAIL,
-            Intent.PRODUCT_LIST,
-            Intent.PRODUCT_COMPARE,
-        }:
-            return Intent.PRODUCT_DETAIL
+        if (
+            ctx.has_active_entity
+            and not features.has_entity_mention
+            and (features.is_short or features.has_context_reference)
+        ):
+            return TaskPlanner._resolve_domain_intent(routed_intent, features, ctx)
+        if routed_intent == Intent.UNKNOWN and ctx.has_active_entity:
+            if features.is_question:
+                return Intent.FAQ
         return routed_intent
 
     @staticmethod
-    def _is_follow_up_query(query: str) -> bool:
-        normalized = IntentRouter._normalize(query)
-        tokens = normalized.split()
-        if len(tokens) <= 4:
-            return any(
-                phrase in normalized
-                for phrase in (
-                    "gia",
-                    "bao nhieu",
-                    "con hang",
-                    "so luong",
-                    "mat bao lau",
-                    "thoi gian",
-                    "co dau",
-                    "co tot",
-                    "cai do",
-                    "san pham do",
-                    "dich vu do",
-                    "cai nay",
-                    "loai nay",
-                    "no",
-                )
+    def _catalog_intent_for_unbound_detail(
+        intent: Intent,
+        entities: list[str],
+        ctx: ConversationContext,
+    ) -> Intent:
+        capability = capability_for(intent)
+        if (
+            capability.entity_scope != EntityScope.EXACTLY_ONE
+            or entities
+            or not ctx.is_fresh_session
+        ):
+            return intent
+        return list_intent_for_entity_type(capability.entity_domain) or intent
+
+    @staticmethod
+    def _resolve_domain_intent(
+        routed_intent: Intent,
+        features: QueryFeatures,
+        ctx: ConversationContext,
+    ) -> Intent:
+        domain = ctx.active_domain
+        if domain is None:
+            return routed_intent
+        if features.is_availability or features.is_price:
+            return detail_intent_for_entity_type(domain) or routed_intent
+        if features.is_duration:
+            return detail_intent_for_entity_type(domain) or routed_intent
+        if features.is_question:
+            return Intent.FAQ
+        return routed_intent
+
+    @staticmethod
+    def _is_follow_up_query(
+        query: str,
+        ctx: ConversationContext | None = None,
+        features: QueryFeatures | None = None,
+    ) -> bool:
+        features = features or QueryFeatures.extract(query)
+        if features.is_social or features.is_schedule_query or features.has_entity_mention:
+            return False
+        if ctx is None:
+            return features.is_short and (
+                features.is_question or features.has_context_reference
             )
-        return any(
-            phrase in normalized
-            for phrase in (
-                "cai do",
-                "san pham do",
-                "dich vu do",
-                "loai do",
-                "cai nay",
-                "loai nay",
-                " no ",
-            )
+        if ctx.is_fresh_session or not ctx.has_active_entity:
+            return False
+        return (
+            features.is_short
+            or features.has_context_reference
+            or features.is_question
         )
 
     @staticmethod
     def _history_context(history: dict[str, Any]) -> dict[str, Any]:
-        entities: list[str] = []
-        last_intent: Intent | None = None
-        product_ids: list[str] = []
-        product_names: list[str] = []
-        service_ids: list[str] = []
-        service_names: list[str] = []
-        last_filters: dict[str, Any] = {}
-        active_domain: str | None = None
-        state = history.get("state") if isinstance(history, dict) else None
-        if isinstance(state, dict):
-            product_ids = _string_values(state.get("active_product_ids"))
-            product_names = _string_values(state.get("active_product_names"))
-            service_ids = _string_values(state.get("active_service_ids"))
-            service_names = _string_values(state.get("active_service_names"))
-            raw_domain = str(state.get("active_domain") or "").strip()
-            active_domain = raw_domain if raw_domain in {"product", "service"} else None
-            filters = state.get("last_filters")
-            last_filters = filters if isinstance(filters, dict) else {}
-            for value in _string_values(state.get("last_intents")):
-                if last_intent is None:
-                    try:
-                        last_intent = Intent(value)
-                    except ValueError:
-                        pass
-        turns = history.get("turns") if isinstance(history, dict) else None
-        if not isinstance(turns, list):
-            return {
-                "entities": list(dict.fromkeys([*service_names, *product_names, *entities])),
-                "last_intent": last_intent,
-                "active_product_ids": product_ids,
-                "active_product_names": product_names,
-                "active_service_ids": service_ids,
-                "active_service_names": service_names,
-                "last_filters": last_filters,
-                "active_domain": active_domain,
-            }
-        for turn in reversed(turns):
-            if last_intent is None:
-                for value in turn.get("detected_intents") or []:
-                    try:
-                        last_intent = Intent(value)
-                        break
-                    except ValueError:
-                        continue
-            payload = turn.get("entities") or {}
-            if isinstance(payload, dict):
-                global_entities = payload.get("global") or []
-                if isinstance(global_entities, list):
-                    entities.extend(str(item) for item in global_entities if item)
-                task_entities = payload.get("tasks") or {}
-                if isinstance(task_entities, dict):
-                    for values in task_entities.values():
-                        if isinstance(values, list):
-                            entities.extend(str(item) for item in values if item)
-            resolved = turn.get("resolved_ids") or {}
-            if isinstance(resolved, dict):
-                product_ids.extend(_resolved_ids(resolved, "product"))
-                service_ids.extend(_resolved_ids(resolved, "service"))
-            if entities and last_intent:
-                break
-        entities = list(
-            dict.fromkeys(
-                [
-                    *service_names,
-                    *product_names,
-                    *entities,
-                ]
-            )
-        )
-        resolved_domain = active_domain or (_domain(last_intent) if last_intent else None)
-        return {
-            "entities": entities,
-            "last_intent": last_intent,
-            "active_product_ids": list(dict.fromkeys(product_ids)),
-            "active_product_names": list(dict.fromkeys(product_names)),
-            "active_service_ids": list(dict.fromkeys(service_ids)),
-            "active_service_names": list(dict.fromkeys(service_names)),
-            "last_filters": last_filters,
-            "active_domain": resolved_domain,
-        }
+        return build_conversation_context(history).as_legacy_dict()
 
     @staticmethod
     def _parse_llm_output(text: str) -> _PlannerOutput:
@@ -568,15 +568,7 @@ class TaskPlanner:
 
 
 def _domain(intent: Intent) -> str | None:
-    if intent.name.startswith("PRODUCT_"):
-        return "product"
-    if intent.name.startswith("SERVICE_"):
-        return "service"
-    if intent == Intent.FAQ:
-        return "faq"
-    if intent == Intent.CLINIC_INFO:
-        return "clinic_info"
-    return None
+    return domain_for_intent(intent)
 
 
 def _coerce_planner_payload(payload: Any) -> dict[str, Any]:

@@ -67,6 +67,35 @@ class IntentCapability(BaseModel):
     persist_to_memory: bool = False
     suggestion_policy: SuggestionPolicy = SuggestionPolicy()
 
+    @property
+    def entity_domain(self) -> str | None:
+        """
+        Single authoritative entity domain used for typed filter validation.
+
+        Multi-domain intents such as FAQ intentionally return None here. Those
+        intents must derive task entity type from explicit spans, same-turn
+        context, memory, or a validated planner proposal rather than defaulting
+        to the first allowed entity type.
+        """
+        if len(self.allowed_entity_types) != 1:
+            return None
+        first = self.allowed_entity_types[0]
+        if first == "product":
+            return "product"
+        if first == "service":
+            return "service"
+        return None
+
+    @property
+    def primary_source_type(self) -> str | None:
+        if self.evidence_contract.allowed_source_types:
+            return self.evidence_contract.allowed_source_types[0]
+        return self.entity_domain
+
+    @property
+    def domain_label(self) -> str:
+        return entity_label(self.entity_domain)
+
 
 _NO_ENTITY_MODES = (ReferenceMode.NO_ENTITY,)
 _DETAIL_MODES = (
@@ -321,6 +350,53 @@ def capability_for(intent: Intent) -> IntentCapability:
         return INTENT_CAPABILITIES[intent]
     except KeyError as exc:  # pragma: no cover - guarded by startup validation
         raise ValueError(f"Intent is not registered: {intent}") from exc
+
+
+def entity_type_for_intent(
+    intent: Intent,
+    proposed_entity_type: str | None = None,
+) -> str | None:
+    capability = capability_for(intent)
+    if proposed_entity_type in capability.allowed_entity_types:
+        return proposed_entity_type
+    if len(capability.allowed_entity_types) != 1:
+        return None
+    return capability.entity_domain
+
+
+def domain_for_intent(intent: Intent) -> str | None:
+    capability = capability_for(intent)
+    return capability.entity_domain or capability.primary_source_type
+
+
+def detail_intent_for_entity_type(entity_type: str | None) -> Intent | None:
+    for intent, capability in INTENT_CAPABILITIES.items():
+        if (
+            capability.entity_domain == entity_type
+            and capability.entity_scope == EntityScope.EXACTLY_ONE
+        ):
+            return intent
+    return None
+
+
+def list_intent_for_entity_type(entity_type: str | None) -> Intent | None:
+    for intent, capability in INTENT_CAPABILITIES.items():
+        if (
+            capability.entity_domain == entity_type
+            and capability.entity_scope == EntityScope.FILTER_ONLY
+        ):
+            return intent
+    return None
+
+
+def entity_label(entity_type: str | None) -> str:
+    labels = {
+        "product": "sản phẩm",
+        "service": "dịch vụ",
+        "clinic_info": "thông tin phòng khám",
+        "faq": "FAQ",
+    }
+    return labels.get(entity_type or "", "mục")
 
 
 def validate_intent_registry() -> None:

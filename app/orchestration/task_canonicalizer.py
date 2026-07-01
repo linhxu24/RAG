@@ -4,7 +4,11 @@ import re
 from typing import Any
 
 from app.constants import Intent
-from app.orchestration.intent_registry import EntityScope, capability_for
+from app.orchestration.intent_registry import (
+    EntityScope,
+    capability_for,
+    entity_label,
+)
 from app.orchestration.schemas import (
     BindingDecision,
     BoundTask,
@@ -99,23 +103,26 @@ class TaskCanonicalizer:
                 and isinstance(state.get("last_filters"), dict)
                 else {}
             )
-            domain = (
-                "product"
-                if task.intent == Intent.PRODUCT_LIST
-                else "service"
-            )
-            previous = last_filters.get(domain)
+            domain = capability_for(task.intent).entity_domain
+            previous = last_filters.get(domain) if domain else None
             if isinstance(previous, dict):
                 values = {**previous, **values}
 
         for key in ("entities", "names", "name_terms"):
             values.pop(key, None)
-        if task.intent in {Intent.PRODUCT_DETAIL, Intent.PRODUCT_COMPARE}:
+        capability = capability_for(task.intent)
+        if capability.entity_domain == "product" and (
+            capability.entity_scope
+            in {EntityScope.EXACTLY_ONE, EntityScope.TWO_OR_MORE}
+        ):
             values.pop("product_names", None)
             values.pop("product_ids", None)
             values["product_names"] = list(entity_names)
             values["product_ids"] = list(resolved_ids)
-        elif task.intent == Intent.SERVICE_DETAIL:
+        elif capability.entity_domain == "service" and (
+            capability.entity_scope
+            in {EntityScope.EXACTLY_ONE, EntityScope.TWO_OR_MORE}
+        ):
             values.pop("service_names", None)
             values.pop("service_ids", None)
             values["service_names"] = list(entity_names)
@@ -174,7 +181,7 @@ class TaskCanonicalizer:
         if not missing:
             return query
         prefix = " và ".join(entity_names)
-        if task.intent == Intent.PRODUCT_COMPARE:
+        if capability_for(task.intent).entity_scope == EntityScope.TWO_OR_MORE:
             return f"So sánh {prefix}. {query}"
         return f"{prefix}. {query}"
 
@@ -184,7 +191,8 @@ class TaskCanonicalizer:
         status: str,
         ambiguous_candidates: tuple[dict[str, Any], ...],
     ) -> str:
-        label = "sản phẩm" if intent.name.startswith("PRODUCT_") else "dịch vụ"
+        capability = capability_for(intent)
+        label = entity_label(capability.entity_domain)
         if status == "ambiguous" and ambiguous_candidates:
             names = [
                 str(item.get("name"))
@@ -196,8 +204,8 @@ class TaskCanonicalizer:
                     f"Tôi thấy nhiều {label} gần giống: "
                     f"{', '.join(names)}. Bạn muốn hỏi mục nào?"
                 )
-        if intent == Intent.PRODUCT_COMPARE:
-            return "Bạn vui lòng nêu rõ ít nhất hai sản phẩm cần so sánh."
+        if capability.entity_scope == EntityScope.TWO_OR_MORE:
+            return f"Bạn vui lòng nêu rõ ít nhất hai {label} cần so sánh."
         return (
             f"Tôi chưa xác định được chính xác {label}. "
             "Bạn vui lòng nhập tên cụ thể hơn."
@@ -206,11 +214,12 @@ class TaskCanonicalizer:
 
 def _operation(intent: Intent, query: str) -> str | None:
     normalized = normalize_for_match(query)
-    if intent in {Intent.PRODUCT_LIST, Intent.SERVICE_LIST}:
+    capability = capability_for(intent)
+    if capability.entity_scope == EntityScope.FILTER_ONLY:
         return "list"
-    if intent == Intent.PRODUCT_COMPARE:
+    if capability.entity_scope == EntityScope.TWO_OR_MORE:
         return "compare"
-    if intent in {Intent.PRODUCT_DETAIL, Intent.SERVICE_DETAIL}:
+    if capability.entity_scope == EntityScope.EXACTLY_ONE:
         if any(word in normalized for word in ("con hang", "so luong", "ton kho")):
             return "availability_lookup"
         if any(word in normalized for word in ("gia", "chi phi", "bao nhieu")):
@@ -218,10 +227,10 @@ def _operation(intent: Intent, query: str) -> str | None:
         if any(word in normalized for word in ("mat bao lau", "thoi gian", "bao lau")):
             return "duration_lookup"
         return "detail_lookup"
-    if intent == Intent.FAQ:
+    if capability.primary_source_type == "faq":
         return "answer_question"
-    if intent == Intent.CLINIC_INFO:
+    if capability.primary_source_type == "clinic_info":
         return "fact_lookup"
-    if intent in {Intent.GREETING, Intent.CHITCHAT}:
+    if not capability.allowed_tools:
         return "social"
     return None

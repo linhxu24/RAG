@@ -4,6 +4,14 @@ from pathlib import Path
 from pydantic import AliasChoices, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEFAULT_ROUTER_TIMEOUT_SECONDS = 30
+DEFAULT_OLLAMA_TIMEOUT_SECONDS = 120
+DEFAULT_OLLAMA_ROUTER_TIMEOUT_SECONDS = 30
+DEFAULT_OLLAMA_GENERATION_TIMEOUT_SECONDS = 120
+DEFAULT_OPENAI_TIMEOUT_SECONDS = 45
+DEFAULT_OPENAI_ROUTER_TIMEOUT_SECONDS = 15
+DEFAULT_OPENAI_GENERATION_TIMEOUT_SECONDS = 45
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -21,13 +29,17 @@ class Settings(BaseSettings):
     duplicate_ingestion_policy: str = "reject"
     table_classification_threshold: float = 0.85
     enable_llm_router: bool = True
-    router_timeout_seconds: int = 0
+    router_timeout_seconds: int = DEFAULT_ROUTER_TIMEOUT_SECONDS
     router_failure_threshold: int = 2
     router_circuit_breaker_seconds: int = 60
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     enable_multi_task_planner: bool = True
     enable_plan_review: bool = True
     enable_evidence_synthesis: bool = True
+    enable_query_rewrite: bool = True
+    query_rewrite_model: str | None = None
+    query_rewrite_history_turns: int = 6
+    query_rewrite_timeout_s: float = 8.0
     enable_gliner_ner: bool = True
     gliner_model: str = "urchade/gliner_multi-v2.1"
     gliner_threshold: float = 0.4
@@ -66,9 +78,9 @@ class Settings(BaseSettings):
     )
     ollama_router_model: str = "qwen2.5:7b-instruct"
     ollama_vision_model: str = "llava:latest"
-    ollama_timeout_seconds: int = 120
-    ollama_router_timeout_seconds: int = 0
-    ollama_generation_timeout_seconds: int = 0
+    ollama_timeout_seconds: int = DEFAULT_OLLAMA_TIMEOUT_SECONDS
+    ollama_router_timeout_seconds: int = DEFAULT_OLLAMA_ROUTER_TIMEOUT_SECONDS
+    ollama_generation_timeout_seconds: int = DEFAULT_OLLAMA_GENERATION_TIMEOUT_SECONDS
     ollama_keep_alive: str = "30m"
     ollama_num_predict: int = 2048
     ollama_router_num_predict: int = 512
@@ -80,9 +92,9 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.openai.com/v1"
     openai_router_model: str = "gpt-4.1-nano"
     openai_generation_model: str = "gpt-4.1"
-    openai_timeout_seconds: int = 0
-    openai_router_timeout_seconds: int = 0
-    openai_generation_timeout_seconds: int = 0
+    openai_timeout_seconds: int = DEFAULT_OPENAI_TIMEOUT_SECONDS
+    openai_router_timeout_seconds: int = DEFAULT_OPENAI_ROUTER_TIMEOUT_SECONDS
+    openai_generation_timeout_seconds: int = DEFAULT_OPENAI_GENERATION_TIMEOUT_SECONDS
     openai_max_tokens: int = 2048
     openai_router_max_tokens: int = 512
     openai_generation_max_tokens: int = 2048
@@ -162,16 +174,51 @@ class Settings(BaseSettings):
         return self.ollama_generation_model
 
     @property
+    def llm_query_rewrite_model(self) -> str:
+        configured = (self.query_rewrite_model or "").strip()
+        return configured or self.llm_router_model
+
+    @property
+    def ollama_request_timeout_seconds(self) -> int:
+        return _positive_timeout(
+            self.ollama_timeout_seconds,
+            default=DEFAULT_OLLAMA_TIMEOUT_SECONDS,
+        )
+
+    @property
+    def openai_request_timeout_seconds(self) -> int:
+        return _positive_timeout(
+            self.openai_timeout_seconds,
+            default=DEFAULT_OPENAI_TIMEOUT_SECONDS,
+        )
+
+    @property
     def llm_router_timeout_seconds(self) -> int:
         if self.llm_provider.lower().strip() == "openai":
-            return self.openai_router_timeout_seconds
-        return self.ollama_router_timeout_seconds
+            return _positive_timeout(
+                self.openai_router_timeout_seconds,
+                self.openai_timeout_seconds,
+                default=DEFAULT_OPENAI_ROUTER_TIMEOUT_SECONDS,
+            )
+        return _positive_timeout(
+            self.ollama_router_timeout_seconds,
+            self.ollama_timeout_seconds,
+            default=DEFAULT_OLLAMA_ROUTER_TIMEOUT_SECONDS,
+        )
 
     @property
     def llm_generation_timeout_seconds(self) -> int:
         if self.llm_provider.lower().strip() == "openai":
-            return self.openai_generation_timeout_seconds
-        return self.ollama_generation_timeout_seconds
+            return _positive_timeout(
+                self.openai_generation_timeout_seconds,
+                self.openai_timeout_seconds,
+                default=DEFAULT_OPENAI_GENERATION_TIMEOUT_SECONDS,
+            )
+        return _positive_timeout(
+            self.ollama_generation_timeout_seconds,
+            self.ollama_timeout_seconds,
+            default=DEFAULT_OLLAMA_GENERATION_TIMEOUT_SECONDS,
+        )
 
     @property
     def llm_router_num_predict(self) -> int:
@@ -201,3 +248,10 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def _positive_timeout(*values: int | None, default: int) -> int:
+    for value in values:
+        if value is not None and int(value) > 0:
+            return int(value)
+    return default

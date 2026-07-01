@@ -88,9 +88,8 @@ class OllamaLLMClient:
             payload["format"] = "json"
         started = time.perf_counter()
         timeout = _timeout(
-            self.settings.ollama_timeout_seconds
-            if timeout_seconds is None
-            else timeout_seconds
+            timeout_seconds,
+            default=self.settings.ollama_request_timeout_seconds,
         )
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
@@ -171,9 +170,8 @@ class OpenAILLMClient:
 
         started = time.perf_counter()
         timeout = _timeout(
-            self.settings.openai_timeout_seconds
-            if timeout_seconds is None
-            else timeout_seconds
+            timeout_seconds,
+            default=self.settings.openai_request_timeout_seconds,
         )
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
@@ -219,9 +217,9 @@ def build_llm_client(settings: Settings) -> LLMClient:
     raise ValueError(f"Unsupported LLM_PROVIDER: {settings.llm_provider}")
 
 
-def _timeout(value: int | None):
+def _timeout(value: int | None, *, default: int) -> int:
     if value is None or value <= 0:
-        return None
+        return default
     return value
 
 

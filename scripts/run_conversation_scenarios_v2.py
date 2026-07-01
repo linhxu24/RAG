@@ -192,6 +192,11 @@ def extract_debug(response: dict[str, Any]) -> dict[str, Any]:
     return {
         "debug_absent": debug_absent,
         "raw_debug": raw_debug,
+        "query_rewrite": (
+            raw_debug.get("query_rewrite")
+            if isinstance(raw_debug.get("query_rewrite"), dict)
+            else {}
+        ),
         "resolution_status": resolution_status,
         "resolution_source": resolution_source,
         "gate_status": gate_status,
@@ -276,6 +281,7 @@ def score_v2_checks(
     entity_names = _string_list(bound_task.get("entity_names"))
     resolved_ids = _string_list(bound_task.get("resolved_ids"))
     violations = debug["violations"]
+    rewrite_used = _contextual_rewrite_used(debug)
 
     if target in NORMALIZE_TARGETS:
         checks["normalize_resolved"] = _pass_fail(
@@ -287,7 +293,10 @@ def score_v2_checks(
     if target in INHERIT_TARGETS:
         checks["entity_inherited_not_reresolved"] = _pass_fail(
             debug["resolution_status"] == "resolved"
-            and debug["resolution_source"] == "conversation_state"
+            and (
+                debug["resolution_source"] == "conversation_state"
+                or (rewrite_used and _contains_all_entities(entity_names, expected_entities))
+            )
         )
         _append_failure(failures, checks, "entity_inherited_not_reresolved", target)
 
@@ -317,7 +326,10 @@ def score_v2_checks(
     if target == "implicit_reference_to_second_entity":
         checks["implicit_ref_resolved"] = _pass_fail(
             _same_entities(entity_names, ["SilkLine Waxed Dental Floss"])
-            and decision.get("reference_mode") == "implicit"
+            and (
+                decision.get("reference_mode") == "implicit"
+                or (rewrite_used and decision.get("reference_mode") == "explicit")
+            )
         )
         _append_failure(failures, checks, "implicit_ref_resolved", target)
 
@@ -331,8 +343,11 @@ def score_v2_checks(
 
     if target == "re_reference_after_clinic_info_turn":
         checks["entity_survives_no_entity_turn"] = _pass_fail(
-            debug["resolution_source"] == "conversation_state"
-            and _contains_all_entities(entity_names, expected_entities)
+            _contains_all_entities(entity_names, expected_entities)
+            and (
+                debug["resolution_source"] == "conversation_state"
+                or rewrite_used
+            )
         )
         _append_failure(failures, checks, "entity_survives_no_entity_turn", target)
 
@@ -373,6 +388,7 @@ def build_debug_snapshot(debug: dict[str, Any]) -> dict[str, Any]:
         "gate_status": debug["gate_status"],
         "entity_names": _string_list(bound_task.get("entity_names")),
         "resolved_ids": _string_list(bound_task.get("resolved_ids")),
+        "query_rewrite": debug.get("query_rewrite"),
         "violations": debug["violations"],
     }
 
@@ -415,6 +431,18 @@ def _same_entities(actual: list[str], expected: list[str]) -> bool:
     if len(actual) != len(expected):
         return False
     return _contains_all_entities(actual, expected) and _contains_all_entities(expected, actual)
+
+
+def _contextual_rewrite_used(debug: dict[str, Any]) -> bool:
+    rewrite = debug.get("query_rewrite")
+    if not isinstance(rewrite, dict) or rewrite.get("skipped"):
+        return False
+    referenced = rewrite.get("referenced_entities")
+    if isinstance(referenced, list) and any(str(item).strip() for item in referenced):
+        return True
+    original = str(rewrite.get("original_query") or "").strip()
+    pipeline = str(rewrite.get("pipeline_query") or "").strip()
+    return bool(original and pipeline and original != pipeline)
 
 
 def _overlaps_entities(actual: list[str], previous: list[str]) -> bool:

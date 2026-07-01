@@ -77,8 +77,43 @@ def test_faq_fallback_uses_top_faq_instead_of_related_chunks():
     assert "Trả lời đúng" in response.result.text
     assert len(response.result.items) == 1
     assert response.result.items[0].id == "faq-1"
+    assert response.entities[0].name == "Câu hỏi"
     assert response.answer_type == "fallback"
     assert response.degraded is True
+
+
+def test_direct_response_formats_product_source_by_capability_shape():
+    generator = GroundedGenerator(Settings(), Mock())
+    context = {
+        "items": [
+            {
+                "source_type": "product",
+                "source_id": "product-1",
+                "text": "Máy tăm nước AquaJet. Giá: 850000",
+                "raw_json": {
+                    "name": "Máy tăm nước AquaJet",
+                    "price": 850000,
+                    "currency": "VND",
+                },
+                "source": {},
+            }
+        ],
+        "total_chars": 42,
+    }
+
+    list_response = generator.direct_response(
+        intent=Intent.PRODUCT_LIST,
+        confidence=0.8,
+        context=context,
+    )
+    detail_response = generator.direct_response(
+        intent=Intent.PRODUCT_DETAIL,
+        confidence=0.8,
+        context=context,
+    )
+
+    assert "Mình tìm thấy 1 sản phẩm phù hợp" in list_response.result.text
+    assert "có giá 850.000 VND" in detail_response.result.text
 
 
 def test_chitchat_generation_uses_no_rag_llm_json():

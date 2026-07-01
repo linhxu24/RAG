@@ -5,7 +5,9 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.constants import Intent
 from app.generation.schemas import GeneratedResponse
+from app.orchestration.intent_registry import capability_for
 from app.retrieval.normalization import normalize_vietnamese
 
 
@@ -312,12 +314,15 @@ class ResponseValidator:
             for task in tasks:
                 if not isinstance(task, dict):
                     continue
-                intent = str(task.get("intent") or "")
-                if intent not in {
-                    "PRODUCT_DETAIL",
-                    "PRODUCT_COMPARE",
-                    "SERVICE_DETAIL",
-                }:
+                try:
+                    capability = capability_for(Intent(str(task.get("intent") or "")))
+                except ValueError:
+                    continue
+                requires_entity_grounding = (
+                    capability.evidence_contract.match_resolved_ids
+                    or capability.evidence_contract.authoritative_required
+                )
+                if not requires_entity_grounding:
                     continue
                 names = task.get("entity_names")
                 if not isinstance(names, list):

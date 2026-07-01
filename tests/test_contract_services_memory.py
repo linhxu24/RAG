@@ -71,3 +71,30 @@ def test_conversation_state_contract_exact_keys_and_types():
         "accepted_suggestion_ids": [],
         "dismissed_suggestion_ids": [],
     }
+
+
+def test_recent_entities_for_query_rewrite_are_non_authoritative_hints():
+    history = {
+        "state": {
+            "active_product_names": ["AquaJet Mini Water Flosser"],
+            "active_service_names": ["Tẩy trắng răng tại phòng khám"],
+            "interest_state": {
+                "active_entities": [
+                    {
+                        "type": "product",
+                        "name": "AquaJet Mini Water Flosser",
+                    },
+                    {
+                        "type": "service",
+                        "name": "Cấy ghép Implant đơn lẻ",
+                    },
+                ],
+            },
+        }
+    }
+
+    assert ConversationMemory.recent_entities(history) == [
+        {"name": "AquaJet Mini Water Flosser", "type": "product"},
+        {"name": "Tẩy trắng răng tại phòng khám", "type": "service"},
+        {"name": "Cấy ghép Implant đơn lẻ", "type": "service"},
+    ]

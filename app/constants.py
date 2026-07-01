@@ -29,6 +29,7 @@ REVIEW_STATUS = "review_required"
 
 TRACE_STEPS = (
     "memory_load",
+    "contextual_query_rewrite",
     "task_planning",
     "entity_span_extraction",
     "context_binding",

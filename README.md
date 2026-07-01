@@ -198,8 +198,8 @@ ollama serve
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_ROUTER_MODEL=qwen2.5:7b-instruct
 OLLAMA_GENERATION_MODEL=qwen2.5:14b-instruct-q4_K_M
-OLLAMA_ROUTER_TIMEOUT_SECONDS=0
-OLLAMA_GENERATION_TIMEOUT_SECONDS=0
+OLLAMA_ROUTER_TIMEOUT_SECONDS=30
+OLLAMA_GENERATION_TIMEOUT_SECONDS=120
 OLLAMA_KEEP_ALIVE=30m
 OLLAMA_ROUTER_NUM_PREDICT=512
 OLLAMA_GENERATION_NUM_PREDICT=2048
@@ -207,16 +207,17 @@ OLLAMA_ROUTER_NUM_CTX=8192
 OLLAMA_GENERATION_NUM_CTX=16384
 ENABLE_LLM_ROUTER=true
 ENABLE_PLAN_REVIEW=true
-ROUTER_TIMEOUT_SECONDS=0
+ROUTER_TIMEOUT_SECONDS=30
 ENABLE_HYDE=false
 PRELOAD_RERANKER_ON_STARTUP=true
 ```
 
-RouterLLM là đường chính khi `ENABLE_LLM_ROUTER=true`. RouterLLM không đặt timeout request
-riêng để trace ghi được latency thật của từng query local; `ROUTER_TIMEOUT_SECONDS=0` nghĩa là
-disabled. Deterministic fallback chỉ còn là safe fallback tối thiểu khi RouterLLM lỗi hoặc
-circuit breaker đang mở: xử lý greeting/chitchat/clinic info, list rõ ràng và FAQ nha khoa rõ
-ràng; không tự đóng vai full rule-based router cho product/service detail.
+RouterLLM là đường chính khi `ENABLE_LLM_ROUTER=true`. Router và generation đều phải có timeout
+rõ ràng để lỗi provider degrade thành fallback có trace thay vì treo request. Nếu file `.env`
+cũ còn đặt timeout bằng `0`, `Settings` sẽ clamp về default an toàn theo provider. Deterministic
+fallback chỉ còn là safe fallback tối thiểu khi RouterLLM lỗi hoặc circuit breaker đang mở: xử
+lý greeting/chitchat/clinic info, list rõ ràng và FAQ nha khoa rõ ràng; không tự đóng vai full
+rule-based router cho product/service detail.
 
 Sau khi tải model xong:
 
@@ -230,7 +231,7 @@ ollama list
 OLLAMA_ROUTER_MODEL=qwen2.5:7b-instruct
 ENABLE_LLM_ROUTER=true
 ENABLE_PLAN_REVIEW=true
-ROUTER_TIMEOUT_SECONDS=0
+ROUTER_TIMEOUT_SECONDS=30
 ```
 
 Direct SQL responses không phụ thuộc Ollama. Khi Ollama lỗi ở một RAG route, chatbot trả về
@@ -598,6 +599,7 @@ Production cần đặt auth/proxy policy trước các endpoint admin.
 ## Tests
 
 ```bash
+uv run python scripts/preflight_phase1.py
 uv run ruff check .
 uv run pytest
 ```

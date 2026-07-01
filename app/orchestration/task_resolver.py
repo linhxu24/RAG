@@ -3,8 +3,8 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.constants import Intent
 from app.db.models import Product, Service
+from app.orchestration.intent_registry import detail_intent_for_entity_type
 from app.orchestration.schemas import BindingDecision, PlannedTask, TaskResolution
 from app.retrieval.entity_resolver import DatabaseEntityResolver, EntityCandidate
 
@@ -46,11 +46,14 @@ class TaskEntityResolver:
         ambiguous: list[EntityCandidate] = []
         statuses: list[str] = []
 
-        detail_intent = (
-            Intent.PRODUCT_DETAIL
-            if decision.entity_type == "product"
-            else Intent.SERVICE_DETAIL
-        )
+        detail_intent = detail_intent_for_entity_type(decision.entity_type)
+        if detail_intent is None:
+            return TaskResolution(
+                task_id=task.task_id,
+                status="not_applicable",
+                entity_type=decision.entity_type,
+                entity_names=decision.entity_names,
+            )
         for name in unresolved_names:
             result = self.resolver.resolve(session, name, detail_intent)
             candidates.extend(result.candidates)

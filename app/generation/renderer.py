@@ -1,3 +1,5 @@
+import json
+
 from app.assets.resolver import AssetResolver
 from app.generation.schemas import ChatResponse, ChatSuggestion, GeneratedResponse
 
@@ -24,13 +26,21 @@ class ResponseRenderer:
         )
         resolution = self.asset_resolver.resolve(
             session,
-            response.result.text,
+            self._asset_resolution_text(response),
             asset_ids=asset_ids,
             doc_ids=doc_ids,
         )
         response.result.assets = resolution.assets
         response.result.missing_assets = resolution.missing_assets
         return response
+
+    @staticmethod
+    def _asset_resolution_text(response: GeneratedResponse) -> str:
+        parts = [response.result.text]
+        for item in response.result.items:
+            if item.data:
+                parts.append(json.dumps(item.data, ensure_ascii=False, default=str))
+        return "\n".join(part for part in parts if part)
 
     @staticmethod
     def render(
@@ -45,9 +55,10 @@ class ResponseRenderer:
             trace_id=trace_id,
             intent=response.intent,
             answer_type=response.answer_type,
+            entities=response.entities,
             answer=response.result,
             safety=response.safety,
             degraded=response.degraded,
             suggestions=suggestions or [],
-            debug=dict(debug_data or {}) if debug else None,
+            debug=dict(debug_data or {}) if debug else {},
         )

@@ -1,10 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 from sqlalchemy.orm import Session
 
 from app.config import Settings
-from app.constants import Intent
 from app.orchestration.intent_registry import capability_for
 from app.orchestration.schemas import (
     BoundTask,
@@ -38,6 +37,17 @@ class ToolExecutionResult:
         }
 
 
+@runtime_checkable
+class ToolHandler(Protocol):
+    def __call__(
+        self,
+        session: Session,
+        task: BoundTask,
+        tool_name: str,
+    ) -> tuple[list[EvidenceItem], dict[str, Any] | None]:
+        ...
+
+
 class ToolExecutor:
     def __init__(
         self,
@@ -53,6 +63,13 @@ class ToolExecutor:
         self.sparse = sparse
         self.reranker = reranker
         self.settings = settings
+        self._tool_registry: dict[str, ToolHandler] = {
+            "product_tool": self._handle_structured_tool,
+            "service_tool": self._handle_structured_tool,
+            "clinic_info_tool": self._handle_structured_tool,
+            "faq_tool": self._handle_faq_tool,
+            "document_rag_tool": self._handle_document_rag,
+        }
 
     def execute_many(
         self,
@@ -106,35 +123,61 @@ class ToolExecutor:
         task: BoundTask,
         tool_name: str,
     ) -> tuple[list[EvidenceItem], dict[str, Any] | None]:
-        if tool_name == "product_tool":
-            intent = (
-                task.intent
-                if task.intent.name.startswith("PRODUCT_")
-                else Intent.PRODUCT_DETAIL
+        handler = self._tool_registry.get(tool_name)
+        if handler is None:
+            raise ValueError(
+                f"Tool '{tool_name}' is not registered in ToolExecutor. "
+                f"Available tools: {sorted(self._tool_registry)}"
             )
-            return self._structured_evidence(session, task, intent), None
-        if tool_name == "service_tool":
-            intent = (
-                task.intent
-                if task.intent.name.startswith("SERVICE_")
-                else Intent.SERVICE_DETAIL
+        return handler(session, task, tool_name)
+
+    def register_tool(
+        self,
+        tool_name: str,
+        handler: ToolHandler,
+        *,
+        override: bool = False,
+    ) -> None:
+        """
+        Register a runtime tool handler for extension/plugin tools.
+        """
+        if tool_name in self._tool_registry and not override:
+            raise ValueError(
+                f"Tool '{tool_name}' is already registered. "
+                "Use override=True to replace."
             )
-            return self._structured_evidence(session, task, intent), None
-        if tool_name == "clinic_info_tool":
-            return self._structured_evidence(session, task, Intent.CLINIC_INFO), None
-        if tool_name == "faq_tool":
-            return self._structured_evidence(session, task, Intent.FAQ), None
-        if tool_name == "document_rag_tool":
-            return self._document_rag_evidence(session, task)
-        return [], None
+        self._tool_registry[tool_name] = handler
+
+    def _handle_structured_tool(
+        self,
+        session: Session,
+        task: BoundTask,
+        tool_name: str,
+    ) -> tuple[list[EvidenceItem], None]:
+        return self._structured_evidence(session, task), None
+
+    def _handle_faq_tool(
+        self,
+        session: Session,
+        task: BoundTask,
+        tool_name: str,
+    ) -> tuple[list[EvidenceItem], None]:
+        return self._faq_evidence(session, task), None
+
+    def _handle_document_rag(
+        self,
+        session: Session,
+        task: BoundTask,
+        tool_name: str,
+    ) -> tuple[list[EvidenceItem], dict[str, Any]]:
+        return self._document_rag_evidence(session, task)
 
     def _structured_evidence(
         self,
         session: Session,
         task: BoundTask,
-        intent: Intent,
     ) -> list[EvidenceItem]:
-        results = self._structured_results(session, task, intent)
+        results = self._structured_results(session, task)
         return [
             EvidenceItem.from_retrieval(
                 task_id=task.task_id,
@@ -148,14 +191,10 @@ class ToolExecutor:
         self,
         session: Session,
         task: BoundTask,
-        intent: Intent,
     ) -> list[RetrievalResult]:
         resolved_ids = tuple(task.resolved_ids)
-        if resolved_ids and intent in {
-            Intent.PRODUCT_DETAIL,
-            Intent.PRODUCT_COMPARE,
-            Intent.PRODUCT_LIST,
-        }:
+        capability = capability_for(task.intent)
+        if resolved_ids and capability.entity_domain == "product":
             spec = ProductQuerySpec(
                 product_ids=resolved_ids,
                 limit=max(len(resolved_ids), 1),
@@ -164,7 +203,7 @@ class ToolExecutor:
                 self.structured._product_result(session, item, 1.0)
                 for item in self.structured.list_products(session, spec)
             ]
-        if resolved_ids and intent in {Intent.SERVICE_DETAIL, Intent.SERVICE_LIST}:
+        if resolved_ids and capability.entity_domain == "service":
             spec = ServiceQuerySpec(
                 service_ids=resolved_ids,
                 limit=max(len(resolved_ids), 1),
@@ -173,7 +212,7 @@ class ToolExecutor:
                 self.structured._service_result(session, item, 1.0)
                 for item in self.structured.list_services(session, spec)
             ]
-        if intent == Intent.PRODUCT_LIST:
+        if capability.entity_domain == "product":
             from app.retrieval.structured_query import parse_product_query
 
             spec = parse_product_query(
@@ -192,7 +231,7 @@ class ToolExecutor:
                 self.structured._product_result(session, item, 1.0)
                 for item in self.structured.list_products(session, spec)
             ]
-        if intent == Intent.SERVICE_LIST:
+        if capability.entity_domain == "service":
             from app.retrieval.structured_query import parse_service_query
 
             spec = parse_service_query(
@@ -211,12 +250,54 @@ class ToolExecutor:
                 self.structured._service_result(session, item, 1.0)
                 for item in self.structured.list_services(session, spec)
             ]
+        if capability.primary_source_type == "clinic_info":
+            return self.structured.clinic_info(session, self._search_query(task))
         return self.structured.retrieve(
             session,
-            intent,
+            task.intent,
             self._search_query(task),
             list(task.entity_names),
         )
+
+    def _faq_evidence(
+        self,
+        session: Session,
+        task: BoundTask,
+    ) -> list[EvidenceItem]:
+        query = self._search_query(task)
+        result_sets: dict[str, list[RetrievalResult]] = {
+            "curated_faq": [
+                self.structured._faq_result(faq, score)
+                for faq, score in self.structured.search_faqs(
+                    session,
+                    query,
+                    limit=self.settings.final_top_k,
+                )
+            ],
+            "sparse_faq": self.sparse.retrieve_faqs(session, query),
+            "dense_faq": self.dense.retrieve_faqs(session, query),
+        }
+        result_sets = {name: values for name, values in result_sets.items() if values}
+        if not result_sets:
+            return []
+        fused = reciprocal_rank_fusion(
+            result_sets,
+            self.settings.rrf_k,
+            {
+                "curated_faq": self.settings.structured_rrf_weight,
+                "sparse_faq": self.settings.sparse_rrf_weight,
+                "dense_faq": self.settings.dense_rrf_weight,
+            },
+            max_per_source=self.settings.rrf_max_per_source,
+        )[: self.settings.final_top_k]
+        return [
+            EvidenceItem.from_retrieval(
+                task_id=task.task_id,
+                result=item,
+                trust_level=_trust_level(item),
+            )
+            for item in fused
+        ]
 
     def _document_rag_evidence(
         self,
@@ -239,6 +320,9 @@ class ToolExecutor:
                 task.intent,
             ).items()
         }
+        if capability_for(task.intent).primary_source_type == "faq":
+            dense_sets.pop("dense_faq", None)
+            sparse_sets.pop("sparse_faq", None)
         result_sets = {**dense_sets, **sparse_sets}
         if not result_sets:
             return [], {"reranked": False, "reason": "no_results"}

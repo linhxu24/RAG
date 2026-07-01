@@ -1,0 +1,138 @@
+{
+  "run_id": "20260701092038",
+  "scenario_file": "eval_datasets/dental_conversation_scenarios_v2.json",
+  "backend_url": "http://127.0.0.1:8001",
+  "summary": {
+    "total_scenarios": 1,
+    "scenarios_passed": 0,
+    "scenarios_failed": 1,
+    "total_turns": 1,
+    "turns_passed": 0,
+    "turns_failed": 1,
+    "intent_accuracy": 0.0,
+    "entity_accuracy": 0.0,
+    "follow_up_accuracy": 0.0,
+    "multi_task_accuracy": 0.0,
+    "degraded_rate": 1.0,
+    "avg_latency_ms": 51,
+    "p95_latency_ms": 51,
+    "normalize_check_accuracy": null,
+    "entity_switch_accuracy": null,
+    "clarification_flow_accuracy": null,
+    "gate_regression_clean": true
+  },
+  "bug_regression": {
+    "effective_query_missing_entity_removed": {
+      "description": "Check rằng bug cũ không còn xuất hiện",
+      "method": "Scan toàn bộ violations trong debug output — không được có code = effective_query_missing_entity",
+      "result": "skip",
+      "occurrences": 0,
+      "affected_turns": []
+    },
+    "normalize_unified": {
+      "description": "normalize_for_match hoạt động nhất quán",
+      "method": "Scenario 1 turns 1-3: normalize/inheritance checks must pass for case/diacritic variants",
+      "result": "skip",
+      "evidence": "no applicable debug checks"
+    },
+    "entity_stale_binding_fixed": {
+      "description": "Không có stale entity sau entity switch",
+      "method": "Scenario 2 turns 3-5: entity switch/no_stale checks must pass",
+      "result": "skip",
+      "evidence": "no applicable debug checks"
+    }
+  },
+  "scenarios": [
+    {
+      "scenario_key": "entity_resolve_after_normalize_fix",
+      "title": "Entity resolve với tên có dấu và viết hoa",
+      "passed": false,
+      "scenario_pass_rate": 0.0,
+      "follow_up_accuracy": 0.0,
+      "multi_task_accuracy": 0.0,
+      "turns": [
+        {
+          "turn_index": 0,
+          "query": "Cho tôi thông tin về Tẩy Trắng Răng Tại Phòng Khám",
+          "expected_intent": "SERVICE_DETAIL",
+          "actual_intent": null,
+          "expected_entities": [
+            "Tẩy trắng răng tại phòng khám"
+          ],
+          "found_entities": [],
+          "requires_follow_up_memory": false,
+          "expects_multi_task": false,
+          "latency_ms": 51,
+          "http_status": null,
+          "degraded": null,
+          "answer_text": "",
+          "checks": {
+            "intent_match": "fail",
+            "entity_present": "fail",
+            "follow_up_memory_used": "fail",
+            "multi_task_produced": "fail",
+            "not_degraded": "fail",
+            "has_answer_text": "fail",
+            "valid_json_response": "fail",
+            "no_hallucinated_price": "fail"
+          },
+          "turn_passed": false,
+          "failure_reasons": [
+            "backend_unreachable: [Errno 61] Connection refused"
+          ],
+          "error_type": "backend_unreachable",
+          "error_message": "[Errno 61] Connection refused",
+          "timeout": false,
+          "test_target": "normalize_for_match",
+          "v2_checks": {
+            "normalize_resolved": "skip",
+            "entity_inherited_not_reresolved": "skip",
+            "entity_switched_correctly": "skip",
+            "no_stale_entity": "skip",
+            "cardinality_two_resolved": "skip",
+            "cardinality_one_after_compare": "skip",
+            "implicit_ref_resolved": "skip",
+            "multi_task_both_pass_gate": "skip",
+            "entity_survives_no_entity_turn": "skip",
+            "clarification_triggered": "skip",
+            "resolved_after_clarification": "skip",
+            "no_entity_leaked_to_no_entity_intent": "skip",
+            "chitchat_clean_state": "skip"
+          },
+          "v2_notes": [
+            "debug field absent — enable debug mode in backend"
+          ],
+          "debug_snapshot": {
+            "resolution_status": "unknown",
+            "resolution_source": "unknown",
+            "gate_status": "unknown",
+            "entity_names": [],
+            "resolved_ids": [],
+            "query_rewrite": {},
+            "violations": []
+          }
+        }
+      ]
+    }
+  ],
+  "delta_from_v1": {
+    "intent_accuracy": "-0.7727",
+    "entity_accuracy": "-0.6842",
+    "follow_up_accuracy": "-0.5000",
+    "new_checks_introduced": [
+      "normalize_resolved",
+      "entity_inherited_not_reresolved",
+      "entity_switched_correctly",
+      "no_stale_entity",
+      "cardinality_two_resolved",
+      "cardinality_one_after_compare",
+      "implicit_ref_resolved",
+      "multi_task_both_pass_gate",
+      "entity_survives_no_entity_turn",
+      "clarification_triggered",
+      "resolved_after_clarification",
+      "no_entity_leaked_to_no_entity_intent",
+      "chitchat_clean_state"
+    ]
+  }
+}

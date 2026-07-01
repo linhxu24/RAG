@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.constants import Intent
 from app.generation.schemas import ChatSuggestion
-from app.orchestration.intent_registry import EntityScope, capability_for
+from app.orchestration.intent_registry import EntityScope, capability_for, domain_for_intent
 from app.orchestration.schemas import BoundTaskPlan, EvidencePack
 from app.retrieval.normalization import normalize_vietnamese
 
@@ -759,15 +759,7 @@ def _journey_stage(intent: Intent) -> JourneyStage:
 
 
 def _domain_for_intent(intent: Intent) -> str | None:
-    if intent.name.startswith("PRODUCT_"):
-        return "product"
-    if intent.name.startswith("SERVICE_"):
-        return "service"
-    if intent == Intent.CLINIC_INFO:
-        return "clinic_info"
-    if intent == Intent.FAQ:
-        return "faq"
-    return None
+    return domain_for_intent(intent)
 
 
 def _context_signature(

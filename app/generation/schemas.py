@@ -80,8 +80,9 @@ class ChatResponse(BaseModel):
     trace_id: str
     intent: Intent
     answer_type: str | None = None
+    entities: list[EntityReference] = Field(default_factory=list)
     answer: ResultBody
     safety: SafetyInfo = Field(default_factory=SafetyInfo)
     degraded: bool = False
     suggestions: list[ChatSuggestion] = Field(default_factory=list)
-    debug: dict[str, Any] | None = None
+    debug: dict[str, Any] = Field(default_factory=dict)

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.constants import Intent
 from app.db.models import Product, ProductAlias, Service, ServiceAlias
+from app.orchestration.intent_registry import EntityScope, capability_for
 from app.retrieval.normalization import normalize_vietnamese, query_tokens
 
 
@@ -71,16 +72,16 @@ class DatabaseEntityResolver:
         query: str,
         intent: Intent,
     ) -> EntityResolution:
-        if intent not in {
-            Intent.PRODUCT_DETAIL,
-            Intent.PRODUCT_COMPARE,
-            Intent.SERVICE_DETAIL,
+        capability = capability_for(intent)
+        entity_type = capability.entity_domain
+        if entity_type not in {"product", "service"} or capability.entity_scope not in {
+            EntityScope.EXACTLY_ONE,
+            EntityScope.TWO_OR_MORE,
         }:
             return EntityResolution()
 
-        multiple = intent == Intent.PRODUCT_COMPARE
+        multiple = capability.entity_scope == EntityScope.TWO_OR_MORE
         segments = self._segments(query) if multiple else [query]
-        entity_type = "service" if intent == Intent.SERVICE_DETAIL else "product"
         selected: list[EntityCandidate] = []
         ambiguous: list[EntityCandidate] = []
         all_candidates: list[EntityCandidate] = []

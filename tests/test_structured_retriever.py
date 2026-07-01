@@ -83,21 +83,15 @@ def test_service_list_filters_by_category_code():
         source_doc_id=uuid.uuid4(),
         status="active",
     )
-    whitening = Service(
-        service_id=uuid.uuid4(),
-        name="Tẩy trắng răng tại phòng khám",
-        category_code="COSMETIC",
-        source_category="COSMETIC",
-        source_doc_id=uuid.uuid4(),
-        status="active",
-    )
+    captured = {}
 
     class _Scalars:
         def all(self):
-            return [implant, whitening]
+            return [implant]
 
     class _Session:
-        def scalars(self, _statement):
+        def scalars(self, statement):
+            captured["statement"] = statement
             return _Scalars()
 
     results = StructuredRetriever().list_services(
@@ -106,9 +100,12 @@ def test_service_list_filters_by_category_code():
     )
 
     assert [service.name for service in results] == ["Cấy ghép Implant đơn lẻ"]
+    statement_text = str(captured["statement"])
+    assert "services.category_code" in statement_text
+    assert "ORDER BY" in statement_text
 
 
-def test_service_list_filters_by_source_category_term():
+def test_service_list_builds_sql_filter_for_source_category_term():
     implant = Service(
         service_id=uuid.uuid4(),
         name="Phục hình răng mất",
@@ -117,21 +114,15 @@ def test_service_list_filters_by_source_category_term():
         source_doc_id=uuid.uuid4(),
         status="active",
     )
-    whitening = Service(
-        service_id=uuid.uuid4(),
-        name="Tẩy trắng răng tại phòng khám",
-        category_code="COSMETIC",
-        source_category="Nha khoa thẩm mỹ",
-        source_doc_id=uuid.uuid4(),
-        status="active",
-    )
+    captured = {}
 
     class _Scalars:
         def all(self):
-            return [implant, whitening]
+            return [implant]
 
     class _Session:
-        def scalars(self, _statement):
+        def scalars(self, statement):
+            captured["statement"] = statement
             return _Scalars()
 
     results = StructuredRetriever().list_services(
@@ -140,3 +131,36 @@ def test_service_list_filters_by_source_category_term():
     )
 
     assert [service.name for service in results] == ["Phục hình răng mất"]
+    statement_text = str(captured["statement"])
+    assert "simplydent_unaccent" in statement_text
+    assert "services.source_category" in statement_text
+
+
+def test_service_list_pushes_price_duration_and_sort_to_sql():
+    captured = {}
+
+    class _Scalars:
+        def all(self):
+            return []
+
+    class _Session:
+        def scalars(self, statement):
+            captured["statement"] = statement
+            return _Scalars()
+
+    StructuredRetriever().list_services(
+        _Session(),
+        ServiceQuerySpec(
+            price_max=1_000_000,
+            duration_max=60,
+            sort_by="duration",
+            sort_direction="desc",
+            limit=7,
+        ),
+    )
+
+    statement_text = str(captured["statement"])
+    assert "services.price <=" in statement_text
+    assert "services.duration_minutes <=" in statement_text
+    assert "ORDER BY services.duration_minutes DESC" in statement_text
+    assert "LIMIT" in statement_text
